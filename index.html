@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Life Log — บันทึกชีวิต</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Life <span>Log</span></h1>
+    <div class="header-btns">
+      <button class="text-btn" id="calendarBtn">ปฏิทิน</button><span class="sep">·</span>
+      <button class="text-btn" id="tagMgrBtn">แท็ก</button><span class="sep">·</span>
+      <button class="text-btn" id="exportBtn">ส่งออก</button><span class="sep">·</span>
+      <button class="text-btn" id="importBtn">นำเข้า</button><span class="sep">·</span>
+      <button class="text-btn" id="themePickerBtn">ธีม</button><span class="sep">·</span>
+      <button class="text-btn" id="darkToggle">มืด</button>
+      <input type="file" id="importFile" accept=".json" hidden>
+    </div>
+  </header>
+
+  <div class="theme-picker hidden" id="themePicker"></div>
+
+  <div class="calendar-wrap hidden" id="calendarWrap">
+    <div class="cal-header">
+      <button class="cal-nav" id="calToday">วันนี้</button>
+      <button class="cal-nav" id="calPrev" aria-label="เดือนก่อนหน้า">‹</button>
+      <div class="cal-title" id="calTitle"></div>
+      <button class="cal-nav" id="calNext" aria-label="เดือนถัดไป">›</button>
+    </div>
+    <div class="cal-grid" id="calGrid"></div>
+  </div>
+
+  <div class="stats-line" id="statsLine" aria-live="polite">0 รายการ</div>
+
+  <div class="composer" id="composer">
+    <textarea id="text" placeholder="วันนี้เป็นยังไงบ้าง? เล่าให้ฟังหน่อย..." maxlength="10000" aria-label="เขียนบันทึก"></textarea>
+    <div class="moods" id="moods"></div>
+    <div class="composer-foot">
+      <input type="text" id="tags" placeholder="แท็ก คั่นด้วยจุลภาค เช่น งาน, ออกกำลังกาย" maxlength="500" aria-label="แท็ก">
+      <button class="save-btn" id="saveBtn">บันทึก</button>
+    </div>
+  </div>
+
+  <div class="filters">
+    <input type="text" id="search" placeholder="ค้นหา" aria-label="ค้นหารายการ">
+    <button class="chip" data-range="all">ทั้งหมด</button>
+    <button class="chip" data-range="today">วันนี้</button>
+    <button class="chip" data-range="week">7 วัน</button>
+    <button class="chip" data-range="month">30 วัน</button>
+  </div>
+
+  <div id="list"></div>
+
+  <footer>ข้อมูลถูกเก็บไว้ในเบราว์เซอร์ของคุณเท่านั้น (localStorage) · กด ส่งออก เพื่อสำรองข้อมูลเป็นระยะ</footer>
+</div>
+
+<button class="fab" id="fabBtn" aria-label="เขียนบันทึกใหม่">＋</button>
+
+<div class="modal-overlay" id="modalOverlay" hidden role="dialog" aria-modal="true"></div>
+<div class="toast-container" id="toastContainer" aria-live="polite"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
