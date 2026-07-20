@@ -10,10 +10,41 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<div class="wrap">
+
+<!-- ========== AUTH SCREEN ========== -->
+<div class="auth-screen" id="authScreen">
+  <div class="auth-card">
+    <h1 class="auth-logo">Life <span>Log</span></h1>
+    <p class="auth-sub">บันทึกชีวิตของคุณ</p>
+
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="loginTab">เข้าสู่ระบบ</button>
+      <button class="auth-tab" id="signupTab">สมัครสมาชิก</button>
+    </div>
+
+    <form class="auth-form" id="loginForm">
+      <input type="email" id="loginEmail" placeholder="อีเมล" required autocomplete="email">
+      <input type="password" id="loginPass" placeholder="รหัสผ่าน" required autocomplete="current-password" minlength="6">
+      <button type="submit" class="auth-submit">เข้าสู่ระบบ</button>
+    </form>
+
+    <form class="auth-form hidden" id="signupForm">
+      <input type="email" id="signupEmail" placeholder="อีเมล" required autocomplete="email">
+      <input type="password" id="signupPass" placeholder="รหัสผ่าน (≥ 6 ตัวอักษร)" required autocomplete="new-password" minlength="6">
+      <button type="submit" class="auth-submit">สมัครสมาชิก</button>
+    </form>
+
+    <div class="auth-error hidden" id="authError"></div>
+  </div>
+</div>
+
+<!-- ========== MAIN APP (hidden until auth) ========== -->
+<div class="wrap hidden" id="mainApp">
   <header>
     <h1>Life <span>Log</span></h1>
     <div class="header-btns">
+      <span class="user-email" id="userEmail"></span><span class="sep">·</span>
+      <button class="text-btn" id="logoutBtn">ออก</button><span class="sep">·</span>
       <button class="text-btn" id="calendarBtn">ปฏิทิน</button><span class="sep">·</span>
       <button class="text-btn" id="tagMgrBtn">แท็ก</button><span class="sep">·</span>
       <button class="text-btn" id="exportBtn">ส่งออก</button><span class="sep">·</span>
@@ -57,14 +88,24 @@
 
   <div id="list"></div>
 
-  <footer>ข้อมูลถูกเก็บไว้ในเบราว์เซอร์ของคุณเท่านั้น (localStorage) · กด ส่งออก เพื่อสำรองข้อมูลเป็นระยะ</footer>
+  <footer>ข้อมูลถูกเก็บไว้ใน Supabase · กด ส่งออก เพื่อสำรองข้อมูลเป็นระยะ</footer>
 </div>
 
-<button class="fab" id="fabBtn" aria-label="เขียนบันทึกใหม่">＋</button>
+<button class="fab hidden" id="fabBtn" aria-label="เขียนบันทึกใหม่">＋</button>
 
 <div class="modal-overlay" id="modalOverlay" hidden role="dialog" aria-modal="true"></div>
 <div class="toast-container" id="toastContainer" aria-live="polite"></div>
 
+<!--
+  ============================================================
+  SUPABASE CONFIG — ใส่ค่าจาก Supabase Dashboard > Settings > API
+  ============================================================
+-->
+<script>
+  window.SUPABASE_URL = 'https://YOUR-PROJECT.supabase.co';
+  window.SUPABASE_ANON_KEY = 'YOUR-ANON-KEY';
+</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="app.js"></script>
 </body>
 </html>

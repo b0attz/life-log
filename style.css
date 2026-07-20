@@ -1,5 +1,6 @@
 /* === RESET & BASE === */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+.hidden { display: none !important; }
 :root {
   --bg: #faf8f5; --card: transparent; --ink: #1a1a18; --muted: #8a8278;
   --accent: #4a5a6a; --accent-soft: #eef0f2; --line: #e8e4de;
@@ -385,6 +386,52 @@ footer { text-align: center; margin-top: 48px; font-size: .75rem; color: var(--m
 @media (max-width: 600px) {
   .fab { bottom: 20px; right: 20px; width: 52px; height: 52px; font-size: 1.4rem; }
 }
+
+/* === AUTH SCREEN === */
+.auth-screen {
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  background: var(--bg); padding: 24px;
+}
+.auth-card {
+  background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+  padding: 40px 36px; max-width: 400px; width: 100%;
+  box-shadow: 0 4px 24px rgba(0,0,0,.08); text-align: center;
+}
+.auth-logo {
+  font-size: 2rem; font-weight: 700; letter-spacing: -.02em; margin-bottom: 4px;
+}
+.auth-logo span { color: var(--accent); }
+.auth-sub { font-size: .9rem; color: var(--muted); margin-bottom: 28px; }
+.auth-tabs {
+  display: flex; gap: 0; margin-bottom: 24px; border-bottom: 1px solid var(--line);
+}
+.auth-tab {
+  flex: 1; padding: 12px; background: none; border: none; cursor: pointer;
+  font: inherit; font-size: .9rem; color: var(--muted); transition: .15s;
+  border-bottom: 2px solid transparent; margin-bottom: -1px;
+}
+.auth-tab:hover { color: var(--ink); }
+.auth-tab.active { color: var(--ink); font-weight: 600; border-bottom-color: var(--accent); }
+.auth-form { display: flex; flex-direction: column; gap: 14px; }
+.auth-form input {
+  width: 100%; border: 1px solid var(--line); border-radius: 10px;
+  padding: 14px 16px; font: inherit; font-size: .95rem;
+  background: var(--bg); color: var(--ink); outline: none; transition: .15s;
+}
+.auth-form input:focus { border-color: var(--accent); }
+.auth-submit {
+  width: 100%; padding: 14px; border: none; border-radius: 10px;
+  background: var(--accent); color: #fff; font: inherit; font-size: .95rem;
+  font-weight: 600; cursor: pointer; transition: .15s; min-height: 52px;
+}
+.auth-submit:hover { opacity: .85; }
+.auth-submit:disabled { opacity: .5; cursor: not-allowed; }
+.auth-error {
+  margin-top: 14px; padding: 12px; border-radius: 8px;
+  background: rgba(187,51,51,.08); color: #b33; font-size: .85rem;
+}
+.auth-error.hidden { display: none; }
+.user-email { font-size: .75rem; color: var(--muted); }
 
 /* === PRINT === */
 @media print {
