@@ -11,11 +11,11 @@ var MOODS = ["😄","🙂","😐","😢","😡","🤩","😴","🤒"];
 var THEME_KEY = 'lifelog.theme';
 var RANGE_KEY = 'lifelog.range';
 var THEMES = [
-  { name: 'light',  label: 'สว่าง',   color: '#faf8f5', dot: '#4a5a6a' },
-  { name: 'dark',   label: 'มืด',     color: '#1a1816', dot: '#8a9aaa' },
-  { name: 'sepia',  label: 'ซีเปีย',  color: '#f9f5ec', dot: '#6a5a4a' },
-  { name: 'forest', label: 'ป่าไม้',   color: '#f4f6f2', dot: '#4a7a4a' },
-  { name: 'ocean',  label: 'มหาสมุทร', color: '#f2f5f8', dot: '#4a6a88' }
+  { name: 'light',  label: 'สว่าง',   color: '#f8f7f4', dot: '#5b6b7f' },
+  { name: 'dark',   label: 'มืด',     color: '#121110', dot: '#8aa0b4' },
+  { name: 'sepia',  label: 'ซีเปีย',  color: '#f5f0e6', dot: '#7a6a52' },
+  { name: 'forest', label: 'ป่าไม้',   color: '#f2f5f0', dot: '#4a7a4a' },
+  { name: 'ocean',  label: 'มหาสมุทร', color: '#f0f4f8', dot: '#4a6a88' }
 ];
 
 /* =========================================================
@@ -29,6 +29,49 @@ var filterDay = null;
 var calendarVisible = false;
 var themePickerVisible = false;
 var searchTimer = null;
+var sidebarOpen = false;
+
+/* --- New feature state --- */
+var folders = [];
+var goals = [];
+var goalLogs = {};      /* key: goalId_date, value: true/false */
+var selectedFolderId = '';
+var activeFolderFilter = null;
+var focusActive = false;
+
+/* =========================================================
+   Sidebar
+   ========================================================= */
+function openSidebar() {
+  var sidebar = document.getElementById('sidebar');
+  var overlay = document.getElementById('sidebarOverlay');
+  sidebar.classList.remove('hidden');
+  overlay.classList.remove('hidden');
+  requestAnimationFrame(function() {
+    sidebar.classList.add('open');
+    overlay.classList.add('visible');
+  });
+  sidebarOpen = true;
+  document.body.style.overflow = 'hidden';
+}
+
+function closeSidebar() {
+  var sidebar = document.getElementById('sidebar');
+  var overlay = document.getElementById('sidebarOverlay');
+  sidebar.classList.remove('open');
+  overlay.classList.remove('visible');
+  setTimeout(function() {
+    sidebar.classList.add('hidden');
+    overlay.classList.add('hidden');
+  }, 300);
+  sidebarOpen = false;
+  document.body.style.overflow = '';
+}
+
+function toggleSidebar() {
+  if (sidebarOpen) closeSidebar();
+  else openSidebar();
+}
 
 /* =========================================================
    Auth
@@ -44,8 +87,15 @@ function showApp(user) {
   document.getElementById('authScreen').classList.add('hidden');
   document.getElementById('mainApp').classList.remove('hidden');
   document.getElementById('fabBtn').classList.remove('hidden');
-  document.getElementById('userEmail').textContent = user.email;
-  loadEntries().then(function() { render(); });
+  document.getElementById('sidebarEmail').textContent = user.email;
+  var p1 = loadEntries();
+  var p2 = loadFolders();
+  var p3 = loadGoals();
+  var p4 = loadGoalLogs();
+  Promise.all([p1, p2, p3, p4]).then(function() {
+    renderFolderSelect();
+    render();
+  });
 }
 
 /* --- Auth tabs --- */
@@ -98,15 +148,68 @@ document.getElementById('signupForm').addEventListener('submit', function(e) {
 });
 
 /* --- Logout --- */
-document.getElementById('logoutBtn').addEventListener('click', function() {
+document.getElementById('navLogout').addEventListener('click', function() {
+  closeSidebar();
   supabase.auth.signOut();
 });
 
 /* --- Auth state listener --- */
 supabase.auth.onAuthStateChange(function(event, session) {
   if (session && session.user) { showApp(session.user); }
-  else { currentUser = null; entries = []; showAuth(); }
+  else { currentUser = null; entries = []; folders = []; goals = []; goalLogs = {}; activeFolderFilter = null; selectedFolderId = ''; showAuth(); }
 });
+
+/* =========================================================
+   Sidebar Navigation
+   ========================================================= */
+document.getElementById('hamburgerBtn').addEventListener('click', toggleSidebar);
+document.getElementById('sidebarClose').addEventListener('click', closeSidebar);
+document.getElementById('sidebarOverlay').addEventListener('click', closeSidebar);
+
+document.getElementById('navFocus').addEventListener('click', function() {
+  closeSidebar();
+  openFocusMode();
+});
+document.getElementById('navGoals').addEventListener('click', function() {
+  closeSidebar();
+  openGoalsModal();
+});
+document.getElementById('navFolders').addEventListener('click', function() {
+  closeSidebar();
+  openFolderManager();
+});
+document.getElementById('navTags').addEventListener('click', function() {
+  closeSidebar();
+  openTagManager();
+});
+document.getElementById('navDashboard').addEventListener('click', function() {
+  closeSidebar();
+  openDashboard();
+});
+document.getElementById('navExport').addEventListener('click', function() {
+  closeSidebar();
+  openExportModal();
+});
+document.getElementById('navImport').addEventListener('click', function() {
+  closeSidebar();
+  importEntries();
+});
+document.getElementById('navTheme').addEventListener('click', function() {
+  themePickerVisible = !themePickerVisible;
+  document.getElementById('themePicker').classList.toggle('hidden', !themePickerVisible);
+  renderThemePicker();
+});
+document.getElementById('navDark').addEventListener('click', function() {
+  closeSidebar();
+  toggleDark();
+  updateDarkToggle();
+});
+
+function updateDarkToggle() {
+  var isDark = document.documentElement.dataset.theme === 'dark';
+  document.getElementById('darkIcon').textContent = isDark ? '☀️' : '🌙';
+  document.getElementById('darkLabel').textContent = isDark ? 'โหมดสว่าง' : 'โหมดมืด';
+}
 
 /* =========================================================
    Load / Persist (Supabase)
@@ -135,11 +238,91 @@ async function deleteEntryFromDB(id) {
 
 async function persistAllEntries() {
   if (!currentUser) return false;
-  /* Upsert all entries for current user — used after import */
   var toUpsert = entries.map(function(e) { e.user_id = currentUser.id; return e; });
   var res = await supabase.from('entries').upsert(toUpsert, { onConflict: 'id' });
   if (res.error) { showToast('บันทึกไม่สำเร็จ — ' + res.error.message, 'error'); return false; }
   return true;
+}
+
+/* =========================================================
+   Folder CRUD (Supabase)
+   ========================================================= */
+async function loadFolders() {
+  if (!currentUser) return;
+  var res = await supabase.from('folders').select('*').eq('user_id', currentUser.id).order('sort_order', { ascending: true });
+  if (res.error) { showToast('โหลดโฟลเดอร์ไม่สำเร็จ', 'error'); return; }
+  folders = res.data || [];
+}
+
+async function persistFolder(folder) {
+  if (!currentUser) return false;
+  folder.user_id = currentUser.id;
+  var res = await supabase.from('folders').upsert(folder, { onConflict: 'id' });
+  if (res.error) { showToast('บันทึกโฟลเดอร์ไม่สำเร็จ', 'error'); return false; }
+  return true;
+}
+
+async function deleteFolderFromDB(id) {
+  if (!currentUser) return false;
+  entries.forEach(function(e) { if (e.folder_id === id) e.folder_id = ''; });
+  await persistAllEntries();
+  var res = await supabase.from('folders').delete().eq('id', id).eq('user_id', currentUser.id);
+  if (res.error) { showToast('ลบโฟลเดอร์ไม่สำเร็จ', 'error'); return false; }
+  return true;
+}
+
+/* =========================================================
+   Goals CRUD (Supabase)
+   ========================================================= */
+async function loadGoals() {
+  if (!currentUser) return;
+  var res = await supabase.from('goals').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: true });
+  if (res.error) { showToast('โหลดเป้าหมายไม่สำเร็จ', 'error'); return; }
+  goals = (res.data || []).filter(function(g) { return !g.archived; });
+}
+
+async function persistGoal(goal) {
+  if (!currentUser) return false;
+  goal.user_id = currentUser.id;
+  var res = await supabase.from('goals').upsert(goal, { onConflict: 'id' });
+  if (res.error) { showToast('บันทึกเป้าหมายไม่สำเร็จ', 'error'); return false; }
+  return true;
+}
+
+async function deleteGoalFromDB(id) {
+  if (!currentUser) return false;
+  var res = await supabase.from('goals').delete().eq('id', id).eq('user_id', currentUser.id);
+  if (res.error) { showToast('ลบเป้าหมายไม่สำเร็จ', 'error'); return false; }
+  await supabase.from('goal_logs').delete().eq('goal_id', id).eq('user_id', currentUser.id);
+  return true;
+}
+
+/* =========================================================
+   Goal Logs CRUD (Supabase)
+   ========================================================= */
+async function loadGoalLogs() {
+  if (!currentUser) return;
+  var res = await supabase.from('goal_logs').select('*').eq('user_id', currentUser.id);
+  if (res.error) { showToast('โหลดข้อมูลเป้าหมายไม่สำเร็จ', 'error'); return; }
+  var logs = res.data || [];
+  goalLogs = {};
+  logs.forEach(function(l) {
+    goalLogs[l.goal_id + '_' + l.date] = l.completed;
+  });
+}
+
+async function persistGoalLog(log) {
+  if (!currentUser) return false;
+  log.user_id = currentUser.id;
+  var res = await supabase.from('goal_logs').upsert(log, { onConflict: 'id' });
+  if (res.error) { showToast('บันทึกไม่สำเร็จ', 'error'); return false; }
+  return true;
+}
+
+async function deleteGoalLog(logId, goalId, date) {
+  if (!currentUser) return;
+  delete goalLogs[goalId + '_' + date];
+  await supabase.from('goal_logs').delete().eq('id', logId).eq('user_id', currentUser.id);
 }
 
 /* =========================================================
@@ -148,11 +331,10 @@ async function persistAllEntries() {
 function applyTheme(name) {
   document.documentElement.dataset.theme = name;
   localStorage.setItem(THEME_KEY, name);
-  var btn = document.getElementById('darkToggle');
-  btn.textContent = name === 'dark' ? 'สว่าง' : 'มืด';
   document.querySelectorAll('.theme-dot').forEach(function(d) {
     d.classList.toggle('active', d.dataset.theme === name);
   });
+  updateDarkToggle();
   if (calendarVisible) renderCalendar();
 }
 
@@ -163,6 +345,20 @@ function getDefaultTheme() {
 function toggleDark() {
   var cur = document.documentElement.dataset.theme;
   applyTheme(cur === 'dark' ? 'light' : 'dark');
+}
+
+function renderThemePicker() {
+  var container = document.getElementById('themePicker');
+  container.innerHTML = '';
+  THEMES.forEach(function(t) {
+    var btn = document.createElement('button');
+    btn.className = 'theme-dot';
+    btn.dataset.theme = t.name;
+    btn.innerHTML = '<span class="dot-marker" style="background:' + t.dot + ';width:10px;height:10px;border-radius:50%;display:inline-block;"></span> ' + t.label;
+    if (document.documentElement.dataset.theme === t.name) btn.classList.add('active');
+    btn.addEventListener('click', function() { applyTheme(t.name); });
+    container.appendChild(btn);
+  });
 }
 
 /* =========================================================
@@ -273,7 +469,8 @@ function saveEntry() {
     ts: Date.now(),
     text: text,
     mood: selectedMood,
-    tags: tagsEl.value.split(',').map(function(t) { return t.trim(); }).filter(Boolean)
+    tags: tagsEl.value.split(',').map(function(t) { return t.trim(); }).filter(Boolean),
+    folder_id: selectedFolderId
   };
   entries.unshift(entry);
   persistEntry(entry).then(function(ok) {
@@ -294,7 +491,7 @@ function deleteEntry(id) {
   if (!entry) return;
   showModal({
     title: 'ลบบันทึก',
-    bodyHtml: '<p>ลบบันทึกนี้ใช่ไหม?</p><div style="margin:10px 0;padding:10px;background:var(--accent-soft);font-size:.85rem;">' + escapeHtml((entry.text || '').slice(0, 200)) + '</div>',
+    bodyHtml: '<p>ลบบันทึกนี้ใช่ไหม?</p><div style="margin:10px 0;padding:12px;background:var(--accent-soft);font-size:.85rem;border-radius:var(--radius-sm);">' + escapeHtml((entry.text || '').slice(0, 200)) + '</div>',
     confirmText: 'ลบ',
     showCancel: true,
     onConfirm: function(close) {
@@ -321,8 +518,8 @@ function openEditModal(id) {
     title: 'แก้ไขบันทึก',
     bodyHtml:
       '<textarea id="editText" maxlength="10000">' + escapedText + '</textarea>' +
-      '<div class="moods" id="editMoods" style="margin-top:10px;"></div>' +
-      '<input type="text" id="editTags" value="' + escapedTags + '" maxlength="500" placeholder="แท็ก คั่นด้วยจุลภาค" style="margin-top:10px;">',
+      '<div class="moods" id="editMoods" style="margin-top:12px;"></div>' +
+      '<input type="text" id="editTags" value="' + escapedTags + '" maxlength="500" placeholder="แท็ก คั่นด้วยจุลภาค" style="margin-top:12px;">',
     confirmText: 'บันทึก',
     showCancel: true,
     onConfirm: function(close) {
@@ -361,6 +558,7 @@ function filtered() {
       if (filterRange === 'month' && e.ts < now - 30 * 864e5) return false;
     }
     if (activeTag && !((e.tags || []).includes(activeTag))) return false;
+    if (activeFolderFilter && e.folder_id !== activeFolderFilter) return false;
     if (q && !(((e.text || '').toLowerCase().includes(q)) || ((e.tags || []).some(function(t) { return (t || '').toLowerCase().includes(q); })))) return false;
     return true;
   });
@@ -402,6 +600,14 @@ function render() {
     list.appendChild(dayBar);
   }
 
+  if (activeFolderFilter) {
+    var folderObj = getFolderById(activeFolderFilter);
+    var folderBar = document.createElement('div');
+    folderBar.className = 'filter-bar';
+    folderBar.innerHTML = '<span style="font-size:.85rem;">' + (folderObj ? (folderObj.icon || '📁') + ' ' + escapeHtml(folderObj.name) : 'โฟลเดอร์') + '</span> <span style="flex:1;font-size:.8rem;color:var(--muted);">📂 กรองตามโฟลเดอร์</span> <button class="chip" id="clearFolderFilter">✕</button>';
+    list.appendChild(folderBar);
+  }
+
   if (activeTag) {
     var tagBar = document.createElement('div');
     tagBar.className = 'filter-bar';
@@ -413,7 +619,7 @@ function render() {
     if (!entries.length) {
       list.innerHTML += '<div class="empty"><div class="big">🌱</div>ยังไม่มีบันทึก — เริ่มเขียนเรื่องราวแรกของคุณ</div>';
     } else {
-      list.innerHTML += '<div class="empty"><div class="big">🌱</div>ยังไม่มีบันทึกตรงเงื่อนไข</div>';
+      list.innerHTML += '<div class="empty"><div class="big">🔍</div>ยังไม่มีบันทึกตรงเงื่อนไข</div>';
     }
   } else {
     var lastDay = null;
@@ -434,6 +640,12 @@ function render() {
       if (e.mood) html += '<span class="entry-mood">' + escapeHtml(e.mood) + '</span>';
       html += '<span class="entry-time">' + fmtTime.format(e.ts) + ' น.</span></div>';
       if (e.text) html += '<div class="entry-text">' + escapeHtml(e.text) + '</div>';
+      if (e.folder_id) {
+        var folder = getFolderById(e.folder_id);
+        if (folder) {
+          html += '<div style="margin-top:8px;"><span class="entry-folder"><span class="folder-dot" style="background:' + (folder.color || '#5b6b7f') + ';"></span> ' + (folder.icon || '📁') + ' ' + escapeHtml(folder.name) + '</span></div>';
+        }
+      }
       if ((e.tags || []).length) {
         html += '<div class="entry-tags">';
         for (var t = 0; t < e.tags.length; t++) {
@@ -454,7 +666,6 @@ function render() {
 }
 
 function renderStats() {
-  var totalEl = document.getElementById('statsLine');
   var total = entries.length;
   var daysSet = {};
   entries.forEach(function(e) { daysSet[dayKey(e.ts)] = true; });
@@ -465,8 +676,13 @@ function renderStats() {
   var counts = {};
   entries.forEach(function(e) { if (e.mood) counts[e.mood] = (counts[e.mood] || 0) + 1; });
   var top = Object.entries(counts).sort(function(a, b) { return b[1] - a[1]; })[0];
+  var moodIcon = top ? top[0] : '😊';
   var moodText = top ? top[0] : '—';
-  totalEl.textContent = total + ' รายการ · ' + streak + ' วันติด · ' + moodText;
+
+  document.getElementById('statTotal').textContent = total;
+  document.getElementById('statStreak').textContent = streak;
+  document.getElementById('statMood').textContent = moodText;
+  document.getElementById('statMoodIcon').textContent = moodIcon;
 }
 
 /* =========================================================
@@ -495,7 +711,7 @@ function renderCalendar() {
   var grid = document.getElementById('calGrid');
   grid.innerHTML = '';
 
-  var dowNames = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัส', 'ศุกร์', 'เสาร์'];
+  var dowNames = ['อา.', 'จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.'];
   for (var d = 0; d < 7; d++) {
     var dow = document.createElement('div');
     dow.className = 'cal-dow';
@@ -544,7 +760,7 @@ function renderCalendar() {
     if (dayEntries.length > maxPills) {
       var more = document.createElement('div');
       more.className = 'cal-more';
-      more.textContent = 'อีก ' + (dayEntries.length - maxPills) + ' รายการ';
+      more.textContent = 'อีก ' + (dayEntries.length - maxPills);
       cell.appendChild(more);
     }
 
@@ -638,10 +854,10 @@ function openExportModal() {
   showModal({
     title: 'ส่งออกข้อมูล',
     bodyHtml:
-      '<div class="export-option" data-format="json"><div class="ex-label">JSON</div><div class="ex-desc">ข้อมูลดิบ — นำเข้าคืนได้</div></div>' +
-      '<div class="export-option" data-format="csv"><div class="ex-label">CSV</div><div class="ex-desc">ตาราง — เปิดใน Excel / Sheets</div></div>' +
-      '<div class="export-option" data-format="html"><div class="ex-label">HTML</div><div class="ex-desc">หน้าเว็บแบบสแตนด์อโลน</div></div>' +
-      '<div class="export-option" data-format="pdf"><div class="ex-label">PDF / พิมพ์</div><div class="ex-desc">เปิดหน้าพิมพ์ (Ctrl+P)</div></div>',
+      '<div class="export-option" data-format="json"><div class="ex-icon">📄</div><div><div class="ex-label">JSON</div><div class="ex-desc">ข้อมูลดิบ — นำเข้าคืนได้</div></div></div>' +
+      '<div class="export-option" data-format="csv"><div class="ex-icon">📊</div><div><div class="ex-label">CSV</div><div class="ex-desc">ตาราง — เปิดใน Excel / Sheets</div></div></div>' +
+      '<div class="export-option" data-format="html"><div class="ex-icon">🌐</div><div><div class="ex-label">HTML</div><div class="ex-desc">หน้าเว็บแบบสแตนด์อโลน</div></div></div>' +
+      '<div class="export-option" data-format="pdf"><div class="ex-icon">🖨️</div><div><div class="ex-label">PDF / พิมพ์</div><div class="ex-desc">เปิดหน้าพิมพ์ (Ctrl+P)</div></div></div>',
     onShow: function(close) {
       document.querySelectorAll('.export-option').forEach(function(el) {
         el.addEventListener('click', function() {
@@ -787,69 +1003,547 @@ function deleteTag(tag) {
 }
 
 /* =========================================================
-   Event Listeners
+   Folder Management UI
+   ========================================================= */
+var FOLDER_COLORS = ['#5b6b7f','#b35a6a','#6a8a5a','#8a6a9a','#9a7a5a','#5a8a8a','#a85a5a','#5a8a7a','#7a9a5a','#9a5a8a'];
+var FOLDER_ICONS = ['📁','📂','📒','📓','📔','📕','📗','📘','📙','📚','🗂️','🏠','💼','🎓','❤️','⭐','🎵','🎨','✈️','🏋️','📖','🎮','🍳','🌱'];
+
+function renderFolderSelect() {
+  var sel = document.getElementById('folderSelect');
+  if (!sel) return;
+  var curVal = sel.value;
+  sel.innerHTML = '<option value="">ไม่มี</option>';
+  folders.forEach(function(f) {
+    var opt = document.createElement('option');
+    opt.value = f.id;
+    opt.textContent = (f.icon || '📁') + ' ' + f.name;
+    if (f.id === curVal) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+function getFolderById(id) {
+  if (!id) return null;
+  for (var i = 0; i < folders.length; i++) {
+    if (folders[i].id === id) return folders[i];
+  }
+  return null;
+}
+
+function getEntryCountForFolder(folderId) {
+  var count = 0;
+  entries.forEach(function(e) { if (e.folder_id === folderId) count++; });
+  return count;
+}
+
+function openFolderManager() {
+  var html = '<button class="modal-btn modal-confirm" id="addFolderBtn" style="width:100%;margin-bottom:16px;justify-content:center;">➕ เพิ่มโฟลเดอร์</button><div id="folderList">';
+  if (!folders.length) {
+    html += '<p style="text-align:center;color:var(--muted);padding:20px;font-size:.85rem;">ยังไม่มีโฟลเดอร์ — กดเพิ่มเลย!</p>';
+  } else {
+    folders.forEach(function(f) {
+      var count = getEntryCountForFolder(f.id);
+      html += '<div class="folder-mgr-entry">';
+      html += '<span class="folder-mgr-icon">' + (f.icon || '📁') + '</span>';
+      html += '<span class="folder-mgr-color" style="background:' + (f.color || '#5b6b7f') + ';"></span>';
+      html += '<span class="folder-mgr-name">' + escapeHtml(f.name) + '</span>';
+      html += '<span class="folder-mgr-count">' + count + ' รายการ</span>';
+      html += '<div class="folder-mgr-actions">';
+      html += '<button data-action="rename" data-id="' + f.id + '">เปลี่ยนชื่อ</button>';
+      html += '<button data-action="color" data-id="' + f.id + '">สี</button>';
+      html += '<button data-action="delete" data-id="' + f.id + '">ลบ</button>';
+      html += '</div></div>';
+    });
+  }
+  html += '</div>';
+
+  showModal({
+    title: 'จัดการโฟลเดอร์', bodyHtml: html,
+    onShow: function(close) {
+      document.getElementById('addFolderBtn').addEventListener('click', function() {
+        close();
+        showModal({
+          title: 'สร้างโฟลเดอร์ใหม่',
+          bodyHtml: '<input type="text" id="newFolderName" placeholder="ชื่อโฟลเดอร์" maxlength="50" style="margin-bottom:16px;">' +
+            '<label style="display:block;margin-bottom:8px;font-size:.8rem;color:var(--muted);font-weight:600;">เลือกสี:</label><div class="folder-color-grid" id="folderColorGrid"></div>' +
+            '<label style="display:block;margin:12px 0 8px;font-size:.8rem;color:var(--muted);font-weight:600;">เลือกไอคอน:</label><div class="folder-icon-grid" id="folderIconGrid"></div>',
+          confirmText: 'สร้าง', showCancel: true,
+          onConfirm: function(close2) {
+            var name = document.getElementById('newFolderName').value.trim();
+            if (!name) { showToast('ใส่ชื่อโฟลเดอร์', 'info'); return; }
+            var selectedColor = FOLDER_COLORS[0];
+            var selectedIcon = '📁';
+            var selColorEl = document.querySelector('#folderColorGrid .sel');
+            if (selColorEl) selectedColor = selColorEl.dataset.color;
+            var selIconEl = document.querySelector('#folderIconGrid .sel');
+            if (selIconEl) selectedIcon = selIconEl.textContent;
+            var folder = {
+              id: 'fld-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7),
+              name: name,
+              color: selectedColor,
+              icon: selectedIcon,
+              sort_order: folders.length
+            };
+            folders.push(folder);
+            persistFolder(folder).then(function(ok) {
+              if (ok) { renderFolderSelect(); close2(); showToast('สร้างโฟลเดอร์แล้ว', 'success'); }
+              else { folders.pop(); }
+            });
+          },
+          onShow: function() {
+            var colorGrid = document.getElementById('folderColorGrid');
+            FOLDER_COLORS.forEach(function(c, i) {
+              var dot = document.createElement('div');
+              dot.className = 'folder-color-opt' + (i === 0 ? ' sel' : '');
+              dot.dataset.color = c;
+              dot.style.background = c;
+              dot.setAttribute('tabindex', '0');
+              dot.setAttribute('role', 'button');
+              dot.addEventListener('click', function() {
+                document.querySelectorAll('#folderColorGrid .folder-color-opt').forEach(function(d) { d.classList.remove('sel'); });
+                dot.classList.add('sel');
+              });
+              colorGrid.appendChild(dot);
+            });
+            var iconGrid = document.getElementById('folderIconGrid');
+            FOLDER_ICONS.forEach(function(ic, i) {
+              var btn = document.createElement('button');
+              btn.className = 'folder-icon-opt' + (i === 0 ? ' sel' : '');
+              btn.textContent = ic;
+              btn.type = 'button';
+              btn.addEventListener('click', function() {
+                document.querySelectorAll('#folderIconGrid .folder-icon-opt').forEach(function(b) { b.classList.remove('sel'); });
+                btn.classList.add('sel');
+              });
+              iconGrid.appendChild(btn);
+            });
+          }
+        });
+      });
+      document.querySelectorAll('#folderList [data-action]').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var action = btn.dataset.action, id = btn.dataset.id;
+          close();
+          if (action === 'rename') renameFolder(id);
+          else if (action === 'color') changeFolderColor(id);
+          else if (action === 'delete') deleteFolderPrompt(id);
+        });
+      });
+    }
+  });
+}
+
+function renameFolder(id) {
+  var folder = getFolderById(id);
+  if (!folder) return;
+  showModal({
+    title: 'เปลี่ยนชื่อโฟลเดอร์',
+    bodyHtml: '<input type="text" id="renameFolderInput" value="' + escapeHtml(folder.name) + '" maxlength="50">',
+    confirmText: 'เปลี่ยน', showCancel: true,
+    onConfirm: function(close) {
+      var name = document.getElementById('renameFolderInput').value.trim();
+      if (!name || name === folder.name) { close(); return; }
+      folder.name = name;
+      persistFolder(folder).then(function(ok) {
+        if (ok) { renderFolderSelect(); render(); close(); showToast('เปลี่ยนชื่อแล้ว', 'success'); }
+      });
+    }
+  });
+}
+
+function changeFolderColor(id) {
+  var folder = getFolderById(id);
+  if (!folder) return;
+  var colorOpts = '';
+  FOLDER_COLORS.forEach(function(c) {
+    colorOpts += '<div class="folder-color-opt' + (c === (folder.color || '#5b6b7f') ? ' sel' : '') + '" data-color="' + c + '" style="background:' + c + ';" tabindex="0" role="button"></div>';
+  });
+  showModal({
+    title: 'เปลี่ยนสี',
+    bodyHtml: '<div class="folder-color-grid">' + colorOpts + '</div>',
+    confirmText: 'เปลี่ยน', showCancel: true,
+    onConfirm: function(close) {
+      var sel = document.querySelector('.folder-color-grid .sel');
+      if (sel) {
+        folder.color = sel.dataset.color;
+        persistFolder(folder).then(function(ok) {
+          if (ok) { render(); close(); showToast('เปลี่ยนสีแล้ว', 'success'); }
+        });
+      } else { close(); }
+    },
+    onShow: function() {
+      document.querySelectorAll('.folder-color-opt').forEach(function(d) {
+        d.addEventListener('click', function() {
+          document.querySelectorAll('.folder-color-opt').forEach(function(x) { x.classList.remove('sel'); });
+          d.classList.add('sel');
+        });
+      });
+    }
+  });
+}
+
+function deleteFolderPrompt(id) {
+  var folder = getFolderById(id);
+  if (!folder) return;
+  var count = getEntryCountForFolder(id);
+  var extra = count > 0 ? '<p style="margin-top:8px;font-size:.85rem;color:var(--danger);">⚠️ ' + count + ' รายการในโฟลเดอร์นี้จะถูกย้ายไป "ไม่มีโฟลเดอร์"</p>' : '';
+  showModal({
+    title: 'ลบโฟลเดอร์',
+    bodyHtml: '<p>ลบโฟลเดอร์ <strong>' + escapeHtml(folder.name) + '</strong> ใช่ไหม?</p>' + extra,
+    confirmText: 'ลบ', showCancel: true,
+    onConfirm: function(close) {
+      folders = folders.filter(function(f) { return f.id !== id; });
+      deleteFolderFromDB(id).then(function(ok) {
+        if (ok) {
+          if (activeFolderFilter === id) activeFolderFilter = null;
+          if (selectedFolderId === id) selectedFolderId = '';
+          renderFolderSelect(); render(); close(); showToast('ลบโฟลเดอร์แล้ว', 'success');
+        } else {
+          folders.push(folder);
+        }
+      });
+    }
+  });
+}
+
+/* =========================================================
+   Goals UI
+   ========================================================= */
+function openGoalsModal() {
+  renderGoalsModal();
+}
+
+function renderGoalsModal() {
+  var today = new Date();
+  var todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+  var fmtGoalDate = new Intl.DateTimeFormat('th-TH', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+  var totalChecked = 0;
+  goals.forEach(function(g) {
+    if (goalLogs[g.id + '_' + todayStr]) totalChecked++;
+  });
+
+  var html = '<div class="goal-item" style="cursor:default;border:none;padding-top:0;">' +
+    '<div style="flex:1;"><div class="goal-title">' + fmtGoalDate.format(today) + '</div></div>' +
+    '<div style="text-align:right;"><div class="goals-stat-val" style="font-size:1rem;">' + totalChecked + '/' + goals.length + '</div><div class="goals-stat-label">วันนี้</div></div>' +
+    '</div>';
+
+  if (goals.length) {
+    html += '<div id="todayGoalList">';
+    goals.forEach(function(g) {
+      var done = !!goalLogs[g.id + '_' + todayStr];
+      var streak = computeGoalStreak(g.id);
+      html += '<div class="goal-item">';
+      html += '<button class="goal-check' + (done ? ' done' : '') + '" data-goal-id="' + g.id + '" data-date="' + todayStr + '"></button>';
+      html += '<div class="goal-info"><div class="goal-title' + (done ? ' done-text' : '') + '">' + escapeHtml(g.title) + '</div>';
+      html += '<div class="goal-meta"><span class="goal-streak">🔥 ' + streak + ' วัน</span><span>' + (g.type === 'daily' ? 'รายวัน' : g.type === 'weekly' ? 'รายสัปดาห์' : 'ปกติ') + '</span></div></div>';
+      html += '<div class="goal-actions">';
+      html += '<button data-action="editGoal" data-id="' + g.id + '">✏️</button>';
+      html += '<button data-action="deleteGoal" data-id="' + g.id + '">🗑️</button>';
+      html += '</div></div>';
+    });
+    html += '</div>';
+  } else {
+    html += '<div class="goal-empty"><div class="big">🎯</div>ยังไม่มีเป้าหมาย — ตั้งเป้าหมายแรกของคุณ!</div>';
+  }
+
+  html += '<button class="modal-btn modal-confirm" id="addGoalBtn" style="width:100%;margin-top:16px;justify-content:center;">➕ เพิ่มเป้าหมาย</button>';
+
+  showModal({
+    title: 'เป้าหมายของฉัน', bodyHtml: html,
+    onShow: function(close) {
+      document.querySelectorAll('.goal-check').forEach(function(cb) {
+        cb.addEventListener('click', function() {
+          var goalId = cb.dataset.goalId;
+          var date = cb.dataset.date;
+          toggleGoal(goalId, date, cb, close);
+        });
+      });
+      document.querySelectorAll('[data-action="editGoal"]').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var id = btn.dataset.id;
+          close();
+          editGoalPrompt(id);
+        });
+      });
+      document.querySelectorAll('[data-action="deleteGoal"]').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var id = btn.dataset.id;
+          close();
+          deleteGoalPrompt(id);
+        });
+      });
+      document.getElementById('addGoalBtn').addEventListener('click', function() {
+        close();
+        addGoalPrompt();
+      });
+    }
+  });
+}
+
+function toggleGoal(goalId, date, cbEl, closeModalFn) {
+  var key = goalId + '_' + date;
+  var isDone = !!goalLogs[key];
+
+  if (isDone) {
+    delete goalLogs[key];
+    supabase.from('goal_logs').delete().eq('goal_id', goalId).eq('date', date).eq('user_id', currentUser ? currentUser.id : '').then(function() {
+      cbEl.classList.remove('done');
+      var parent = cbEl.closest('.goal-item');
+      if (parent) {
+        var titleEl = parent.querySelector('.goal-title');
+        if (titleEl) titleEl.classList.remove('done-text');
+      }
+      if (closeModalFn) closeModalFn();
+      renderGoalsModal();
+    });
+  } else {
+    var log = {
+      id: 'gl-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7),
+      goal_id: goalId,
+      date: date,
+      completed: true
+    };
+    goalLogs[key] = true;
+    persistGoalLog(log).then(function(ok) {
+      if (ok) {
+        if (closeModalFn) closeModalFn();
+        renderGoalsModal();
+      } else {
+        delete goalLogs[key];
+      }
+    });
+  }
+}
+
+function computeGoalStreak(goalId) {
+  var streak = 0;
+  var d = new Date();
+  if (!goalLogs[goalId + '_' + getDateStr(d)]) {
+    d.setDate(d.getDate() - 1);
+  }
+  while (goalLogs[goalId + '_' + getDateStr(d)]) {
+    streak++;
+    d.setDate(d.getDate() - 1);
+  }
+  return streak;
+}
+
+function getDateStr(d) {
+  return dayKey(d.getTime());
+}
+
+function addGoalPrompt() {
+  showModal({
+    title: 'เพิ่มเป้าหมาย',
+    bodyHtml:
+      '<input type="text" id="newGoalTitle" placeholder="ชื่อเป้าหมาย" maxlength="100" style="margin-bottom:12px;">' +
+      '<textarea id="newGoalDesc" placeholder="รายละเอียด (ไม่จำเป็น)" maxlength="500" style="margin-bottom:12px;min-height:60px;"></textarea>' +
+      '<select id="newGoalType">' +
+      '<option value="daily">รายวัน</option>' +
+      '<option value="weekly">รายสัปดาห์</option>' +
+      '<option value="custom">ปกติ (ไม่มีรอบ)</option>' +
+      '</select>',
+    confirmText: 'เพิ่ม', showCancel: true,
+    onConfirm: function(close) {
+      var title = document.getElementById('newGoalTitle').value.trim();
+      if (!title) { showToast('ใส่ชื่อเป้าหมาย', 'info'); return; }
+      var desc = document.getElementById('newGoalDesc').value.trim();
+      var type = document.getElementById('newGoalType').value;
+      var goal = {
+        id: 'goal-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7),
+        title: title,
+        description: desc,
+        type: type,
+        archived: false
+      };
+      goals.push(goal);
+      persistGoal(goal).then(function(ok) {
+        if (ok) { close(); renderGoalsModal(); showToast('เพิ่มเป้าหมายแล้ว', 'success'); }
+        else { goals.pop(); }
+      });
+    }
+  });
+}
+
+function editGoalPrompt(id) {
+  var goal = null;
+  for (var i = 0; i < goals.length; i++) { if (goals[i].id === id) { goal = goals[i]; break; } }
+  if (!goal) return;
+  showModal({
+    title: 'แก้ไขเป้าหมาย',
+    bodyHtml:
+      '<input type="text" id="editGoalTitle" value="' + escapeHtml(goal.title) + '" maxlength="100" style="margin-bottom:12px;">' +
+      '<textarea id="editGoalDesc" maxlength="500" style="margin-bottom:12px;min-height:60px;">' + escapeHtml(goal.description || '') + '</textarea>' +
+      '<select id="editGoalType">' +
+      '<option value="daily"' + (goal.type === 'daily' ? ' selected' : '') + '>รายวัน</option>' +
+      '<option value="weekly"' + (goal.type === 'weekly' ? ' selected' : '') + '>รายสัปดาห์</option>' +
+      '<option value="custom"' + (goal.type === 'custom' ? ' selected' : '') + '>ปกติ</option>' +
+      '</select>',
+    confirmText: 'บันทึก', showCancel: true,
+    onConfirm: function(close) {
+      var title = document.getElementById('editGoalTitle').value.trim();
+      if (!title) { showToast('ใส่ชื่อเป้าหมาย', 'info'); return; }
+      goal.title = title;
+      goal.description = document.getElementById('editGoalDesc').value.trim();
+      goal.type = document.getElementById('editGoalType').value;
+      persistGoal(goal).then(function(ok) {
+        if (ok) { close(); renderGoalsModal(); showToast('แก้ไขแล้ว', 'success'); }
+      });
+    }
+  });
+}
+
+function deleteGoalPrompt(id) {
+  var goal = null;
+  for (var i = 0; i < goals.length; i++) { if (goals[i].id === id) { goal = goals[i]; break; } }
+  if (!goal) return;
+  showModal({
+    title: 'ลบเป้าหมาย',
+    bodyHtml: '<p>ลบเป้าหมาย <strong>' + escapeHtml(goal.title) + '</strong> ใช่ไหม?</p>',
+    confirmText: 'ลบ', showCancel: true,
+    onConfirm: function(close) {
+      goals = goals.filter(function(g) { return g.id !== id; });
+      deleteGoalFromDB(id).then(function(ok) {
+        if (ok) { close(); showToast('ลบเป้าหมายแล้ว', 'success'); }
+        else { goals.push(goal); }
+      });
+    }
+  });
+}
+
+/* =========================================================
+   Dashboard
+   ========================================================= */
+function openDashboard() {
+  var total = entries.length;
+  var streak = computeStreak();
+  var totalWords = 0;
+  entries.forEach(function(e) { if (e.text) totalWords += e.text.split(/\s+/).filter(Boolean).length; });
+
+  var now = new Date();
+  var thisMonth = now.getMonth();
+  var thisYear = now.getFullYear();
+  var entriesThisMonth = entries.filter(function(e) {
+    var d = new Date(e.ts);
+    return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
+  }).length;
+
+  var html = '';
+
+  html += '<div class="dash-stats-grid">';
+  html += '<div class="dash-stat-card"><div class="dash-stat-icon">📝</div><div class="dash-stat-val">' + total + '</div><div class="dash-stat-label">รายการทั้งหมด</div></div>';
+  html += '<div class="dash-stat-card"><div class="dash-stat-icon">🔥</div><div class="dash-stat-val">' + streak + '</div><div class="dash-stat-label">วันติดต่อกัน</div></div>';
+  html += '<div class="dash-stat-card"><div class="dash-stat-icon">📊</div><div class="dash-stat-val">' + entriesThisMonth + '</div><div class="dash-stat-label">เดือนนี้</div></div>';
+  html += '<div class="dash-stat-card"><div class="dash-stat-icon">✍️</div><div class="dash-stat-val">' + totalWords + '</div><div class="dash-stat-label">คำทั้งหมด</div></div>';
+  html += '</div>';
+
+  /* Mood chart */
+  html += '<div class="dash-section"><div class="dash-section-title">😊 อารมณ์</div>';
+  var moodCounts = {};
+  entries.forEach(function(e) { if (e.mood) moodCounts[e.mood] = (moodCounts[e.mood] || 0) + 1; });
+  var moodEntries = Object.entries(moodCounts).sort(function(a, b) { return b[1] - a[1]; });
+  if (moodEntries.length) {
+    var maxMood = moodEntries[0][1];
+    html += '<div class="mood-chart">';
+    moodEntries.forEach(function(m) {
+      var pct = maxMood > 0 ? (m[1] / maxMood * 100) : 0;
+      html += '<div class="mood-chart-row"><span class="mood-chart-emoji">' + escapeHtml(m[0]) + '</span><div class="mood-chart-bar-wrap"><div class="mood-chart-bar" style="width:' + pct + '%"></div></div><span class="mood-chart-count">' + m[1] + '</span></div>';
+    });
+    html += '</div>';
+  } else {
+    html += '<p style="color:var(--muted);font-size:.85rem;">ยังไม่มีข้อมูลอารมณ์</p>';
+  }
+  html += '</div>';
+
+  /* Tag chart */
+  html += '<div class="dash-section"><div class="dash-section-title">🏷️ แท็กยอดนิยม</div>';
+  var tagCounts = {};
+  entries.forEach(function(e) { (e.tags || []).forEach(function(t) { if (t) tagCounts[t] = (tagCounts[t] || 0) + 1; }); });
+  var tagEntries = Object.entries(tagCounts).sort(function(a, b) { return b[1] - a[1]; }).slice(0, 10);
+  if (tagEntries.length) {
+    var maxTag = tagEntries[0][1];
+    html += '<div class="tag-chart">';
+    tagEntries.forEach(function(t) {
+      var pct = maxTag > 0 ? (t[1] / maxTag * 100) : 0;
+      html += '<div class="tag-chart-row"><span class="tag-chart-label">#' + escapeHtml(t[0]) + '</span><div class="tag-chart-bar-wrap"><div class="tag-chart-bar" style="width:' + pct + '%"></div></div><span class="tag-chart-count">' + t[1] + '</span></div>';
+    });
+    html += '</div>';
+  } else {
+    html += '<p style="color:var(--muted);font-size:.85rem;">ยังไม่มีแท็ก</p>';
+  }
+  html += '</div>';
+
+  /* Activity heatmap */
+  html += '<div class="dash-section"><div class="dash-section-title">📅 กิจกรรม 90 วันล่าสุด</div>';
+  html += '<div class="heatmap-wrap">';
+  var dayCounts = {};
+  entries.forEach(function(e) { var k = dayKey(e.ts); dayCounts[k] = (dayCounts[k] || 0) + 1; });
+  var maxDayCount = 1;
+  Object.values(dayCounts).forEach(function(c) { if (c > maxDayCount) maxDayCount = c; });
+
+  var heatmapStart = new Date();
+  heatmapStart.setDate(heatmapStart.getDate() - 89);
+  heatmapStart.setHours(0, 0, 0, 0);
+  var startDow = heatmapStart.getDay();
+  var heatmapHtml = '<div class="heatmap-col">';
+  for (var i = 0; i < startDow; i++) heatmapHtml += '<div class="heatmap-cell" style="visibility:hidden;"></div>';
+
+  var curHeat = new Date(heatmapStart);
+  while (curHeat <= new Date()) {
+    if (curHeat.getDay() === 0 && curHeat.getTime() !== heatmapStart.getTime()) {
+      heatmapHtml += '</div><div class="heatmap-col">';
+    }
+    var hk = dayKey(curHeat.getTime());
+    var hc = dayCounts[hk] || 0;
+    var lvl = hc === 0 ? '' : hc <= maxDayCount * 0.25 ? 'l1' : hc <= maxDayCount * 0.5 ? 'l2' : hc <= maxDayCount * 0.75 ? 'l3' : 'l4';
+    heatmapHtml += '<div class="heatmap-cell ' + lvl + '" title="' + hk + ': ' + hc + ' รายการ"></div>';
+    curHeat.setDate(curHeat.getDate() + 1);
+  }
+  heatmapHtml += '</div>';
+  html += heatmapHtml;
+  html += '<div class="heatmap-legend"><span>น้อย</span><div class="heatmap-cell"></div><div class="heatmap-cell l1"></div><div class="heatmap-cell l2"></div><div class="heatmap-cell l3"></div><div class="heatmap-cell l4"></div><span>มาก</span></div>';
+  html += '</div></div>';
+
+  showModal({
+    title: '📊 สถิติของคุณ', bodyHtml: html
+  });
+}
+
+function computeStreak() {
+  var daysSet = {};
+  entries.forEach(function(e) { daysSet[dayKey(e.ts)] = true; });
+  var streak = 0;
+  var d = new Date();
+  if (!daysSet[dayKey(d.getTime())]) d.setDate(d.getDate() - 1);
+  while (daysSet[dayKey(d.getTime())]) { streak++; d.setDate(d.getDate() - 1); }
+  return streak;
+}
+
+/* =========================================================
+   Focus Mode
+   ========================================================= */
+function openFocusMode() {
+  focusActive = true;
+  document.getElementById('focusOverlay').classList.remove('hidden');
+  document.getElementById('focusText').value = '';
+  document.getElementById('focusText').focus();
+  createMoodPicker(document.getElementById('focusMoods'), null, function(m) { selectedMood = m; });
+}
+
+function closeFocusMode() {
+  focusActive = false;
+  document.getElementById('focusOverlay').classList.add('hidden');
+}
+
+/* =========================================================
+   Event Listeners (DOM ready — scripts at end of body)
    ========================================================= */
 document.getElementById('saveBtn').addEventListener('click', saveEntry);
-document.getElementById('text').addEventListener('keydown', function(e) {
-  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') saveEntry();
-});
-
-document.getElementById('search').addEventListener('input', function() {
-  if (searchTimer) clearTimeout(searchTimer);
-  searchTimer = setTimeout(function() { render(); }, 250);
-});
-
-document.querySelectorAll('.chip[data-range]').forEach(function(c) {
-  c.addEventListener('click', function() {
-    filterRange = c.dataset.range;
-    filterDay = null;
-    localStorage.setItem(RANGE_KEY, filterRange);
-    document.querySelectorAll('.chip[data-range]').forEach(function(x) { x.classList.toggle('on', x === c); });
-    render();
-  });
-});
-filterRange = localStorage.getItem(RANGE_KEY) || 'all';
-var validRanges = ['all', 'today', 'week', 'month'];
-if (validRanges.indexOf(filterRange) === -1) filterRange = 'all';
-var activeChip = document.querySelector('.chip[data-range="' + filterRange + '"]');
-if (activeChip) activeChip.classList.add('on');
-
-document.getElementById('list').addEventListener('click', function(e) {
-  var entryEl = e.target.closest('.entry');
-  if (entryEl) {
-    var id = entryEl.dataset.id;
-    if (e.target.closest('.entry-del')) { deleteEntry(id); return; }
-    if (e.target.closest('.entry-edit')) { openEditModal(id); return; }
-    if (e.target.closest('.tag') && !e.target.closest('.filter-bar')) {
-      activeTag = e.target.closest('.tag').dataset.tag;
-      render();
-      return;
-    }
-  }
-  if (e.target.id === 'clearDayFilter') { filterDay = null; render(); }
-  if (e.target.id === 'clearTagFilter') { activeTag = null; render(); }
-});
-
-document.getElementById('darkToggle').addEventListener('click', toggleDark);
-
-document.getElementById('themePickerBtn').addEventListener('click', function() {
+document.getElementById('themeToggleBtn').addEventListener('click', function() {
   themePickerVisible = !themePickerVisible;
   document.getElementById('themePicker').classList.toggle('hidden', !themePickerVisible);
-});
-
-var themePickerEl = document.getElementById('themePicker');
-THEMES.forEach(function(t) {
-  var dot = document.createElement('button');
-  dot.className = 'theme-dot';
-  dot.dataset.theme = t.name;
-  dot.setAttribute('aria-label', t.label);
-  dot.innerHTML = '<span class="dot-marker">○</span>' + t.label;
-  dot.addEventListener('click', function() {
-    applyTheme(t.name);
-    themePickerVisible = false;
-    document.getElementById('themePicker').classList.add('hidden');
-  });
-  themePickerEl.appendChild(dot);
+  renderThemePicker();
 });
 
 document.getElementById('calendarBtn').addEventListener('click', function() {
@@ -858,11 +1552,11 @@ document.getElementById('calendarBtn').addEventListener('click', function() {
 });
 
 document.getElementById('calPrev').addEventListener('click', function() {
-  calDate = new Date(calDate.getFullYear(), calDate.getMonth() - 1, 1);
+  calDate.setMonth(calDate.getMonth() - 1);
   renderCalendar();
 });
 document.getElementById('calNext').addEventListener('click', function() {
-  calDate = new Date(calDate.getFullYear(), calDate.getMonth() + 1, 1);
+  calDate.setMonth(calDate.getMonth() + 1);
   renderCalendar();
 });
 document.getElementById('calToday').addEventListener('click', function() {
@@ -870,18 +1564,112 @@ document.getElementById('calToday').addEventListener('click', function() {
   renderCalendar();
 });
 
-document.getElementById('exportBtn').addEventListener('click', openExportModal);
-document.getElementById('importBtn').addEventListener('click', importEntries);
-document.getElementById('tagMgrBtn').addEventListener('click', openTagManager);
+/* Filter chips */
+document.querySelectorAll('.filter-chip').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    filterRange = btn.dataset.range;
+    filterDay = null;
+    document.querySelectorAll('.filter-chip').forEach(function(b) { b.classList.remove('on'); });
+    btn.classList.add('on');
+    render();
+  });
+});
 
-document.getElementById('fabBtn').addEventListener('click', function() {
-  var composer = document.getElementById('composer');
-  composer.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  setTimeout(function() { document.getElementById('text').focus(); }, 350);
+/* Search */
+document.getElementById('search').addEventListener('input', function() {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(function() { render(); }, 250);
+});
+
+/* Keyboard shortcut */
+document.addEventListener('keydown', function(e) {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+    e.preventDefault();
+    if (focusActive) {
+      /* Save from focus mode */
+    } else {
+      saveEntry();
+    }
+  }
+});
+
+/* Click delegation for entries */
+document.getElementById('list').addEventListener('click', function(e) {
+  var delBtn = e.target.closest('.entry-del');
+  if (delBtn) {
+    var entry = delBtn.closest('.entry');
+    if (entry) deleteEntry(entry.dataset.id);
+    return;
+  }
+  var editBtn = e.target.closest('.entry-edit');
+  if (editBtn) {
+    var entry = editBtn.closest('.entry');
+    if (entry) openEditModal(entry.dataset.id);
+    return;
+  }
+  var tagEl = e.target.closest('.tag[data-tag]');
+  if (tagEl) {
+    activeTag = tagEl.dataset.tag;
+    render();
+    return;
+  }
+  var clearDay = e.target.closest('#clearDayFilter');
+  if (clearDay) { filterDay = null; render(); return; }
+  var clearFolder = e.target.closest('#clearFolderFilter');
+  if (clearFolder) { activeFolderFilter = null; render(); return; }
+  var clearTag = e.target.closest('#clearTagFilter');
+  if (clearTag) { activeTag = null; render(); return; }
+});
+
+/* Folder select change */
+document.getElementById('folderSelect').addEventListener('change', function() {
+  selectedFolderId = this.value;
+});
+
+/* Focus mode */
+document.getElementById('focusClose').addEventListener('click', closeFocusMode);
+document.getElementById('focusSave').addEventListener('click', function() {
+  var text = document.getElementById('focusText').value.trim();
+  if (!text && !selectedMood) { showToast('กรุณาเขียนข้อความหรือเลือกอารมณ์', 'info'); return; }
+  var entry = {
+    id: Date.now() + '-' + Math.random().toString(36).slice(2, 7),
+    ts: Date.now(),
+    text: text,
+    mood: selectedMood,
+    tags: [],
+    folder_id: ''
+  };
+  entries.unshift(entry);
+  persistEntry(entry).then(function(ok) {
+    if (!ok) { entries.shift(); return; }
+    closeFocusMode();
+    render();
+    showToast('บันทึกแล้ว', 'success');
+  });
 });
 
 /* =========================================================
-   Init — theme only, auth handled by onAuthStateChange
+   Init
    ========================================================= */
-var savedTheme = localStorage.getItem(THEME_KEY);
-applyTheme(savedTheme || getDefaultTheme());
+(function() {
+  /* Restore saved range filter */
+  var savedRange = localStorage.getItem(RANGE_KEY);
+  if (savedRange && ['all', 'today', 'week', 'month'].indexOf(savedRange) !== -1) {
+    filterRange = savedRange;
+    document.querySelectorAll('.filter-chip').forEach(function(btn) {
+      btn.classList.toggle('on', btn.dataset.range === filterRange);
+    });
+  }
+
+  /* Apply saved theme */
+  var savedTheme = localStorage.getItem(THEME_KEY);
+  applyTheme(savedTheme || getDefaultTheme());
+  updateDarkToggle();
+
+  /* Save filter range when changed */
+  var origRender = render;
+  render = function() {
+    localStorage.setItem(RANGE_KEY, filterRange);
+    origRender();
+  };
+})();

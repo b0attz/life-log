@@ -38,22 +38,81 @@
   </div>
 </div>
 
+<!-- ========== SIDEBAR NAVIGATION ========== -->
+<div class="sidebar-overlay hidden" id="sidebarOverlay"></div>
+<nav class="sidebar hidden" id="sidebar">
+  <div class="sidebar-header">
+    <h2>Life <span>Log</span></h2>
+    <button class="sidebar-close" id="sidebarClose" aria-label="ปิดเมนู">✕</button>
+  </div>
+  <div class="sidebar-user">
+    <div class="sidebar-avatar">📝</div>
+    <div class="sidebar-email" id="sidebarEmail"></div>
+  </div>
+  <div class="sidebar-nav">
+    <button class="sidebar-item" id="navFocus">
+      <span class="sidebar-icon">🎯</span>
+      <span>โหมดโฟกัส</span>
+    </button>
+    <button class="sidebar-item" id="navGoals">
+      <span class="sidebar-icon">🏆</span>
+      <span>เป้าหมาย</span>
+    </button>
+    <button class="sidebar-item" id="navFolders">
+      <span class="sidebar-icon">📁</span>
+      <span>โฟลเดอร์</span>
+    </button>
+    <button class="sidebar-item" id="navTags">
+      <span class="sidebar-icon">🏷️</span>
+      <span>แท็ก</span>
+    </button>
+    <div class="sidebar-divider"></div>
+    <button class="sidebar-item" id="navDashboard">
+      <span class="sidebar-icon">📊</span>
+      <span>สถิติ</span>
+    </button>
+    <button class="sidebar-item" id="navExport">
+      <span class="sidebar-icon">📤</span>
+      <span>ส่งออก</span>
+    </button>
+    <button class="sidebar-item" id="navImport">
+      <span class="sidebar-icon">📥</span>
+      <span>นำเข้า</span>
+    </button>
+    <div class="sidebar-divider"></div>
+    <button class="sidebar-item" id="navTheme">
+      <span class="sidebar-icon">🎨</span>
+      <span>ธีม</span>
+    </button>
+    <button class="sidebar-item" id="navDark">
+      <span class="sidebar-icon" id="darkIcon">🌙</span>
+      <span id="darkLabel">โหมดมืด</span>
+    </button>
+    <div class="sidebar-divider"></div>
+    <button class="sidebar-item sidebar-item-danger" id="navLogout">
+      <span class="sidebar-icon">🚪</span>
+      <span>ออกจากระบบ</span>
+    </button>
+  </div>
+</nav>
+
 <!-- ========== MAIN APP (hidden until auth) ========== -->
 <div class="wrap hidden" id="mainApp">
-  <header>
-    <h1>Life <span>Log</span></h1>
-    <div class="header-btns">
-      <span class="user-email" id="userEmail"></span><span class="sep">·</span>
-      <button class="text-btn" id="logoutBtn">ออก</button><span class="sep">·</span>
-      <button class="text-btn" id="calendarBtn">ปฏิทิน</button><span class="sep">·</span>
-      <button class="text-btn" id="tagMgrBtn">แท็ก</button><span class="sep">·</span>
-      <button class="text-btn" id="exportBtn">ส่งออก</button><span class="sep">·</span>
-      <button class="text-btn" id="importBtn">นำเข้า</button><span class="sep">·</span>
-      <button class="text-btn" id="themePickerBtn">ธีม</button><span class="sep">·</span>
-      <button class="text-btn" id="darkToggle">มืด</button>
-      <input type="file" id="importFile" accept=".json" hidden>
+  <!-- Top Bar -->
+  <div class="topbar">
+    <button class="hamburger-btn" id="hamburgerBtn" aria-label="เปิดเมนู">
+      <span></span><span></span><span></span>
+    </button>
+    <h1 class="topbar-title">Life <span>Log</span></h1>
+    <div class="topbar-actions">
+      <button class="icon-btn" id="themeToggleBtn" aria-label="เปลี่ยนธีม">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      </button>
+      <button class="icon-btn" id="calendarBtn" aria-label="ปฏิทิน">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      </button>
     </div>
-  </header>
+  </div>
 
   <div class="theme-picker hidden" id="themePicker"></div>
 
@@ -67,34 +126,73 @@
     <div class="cal-grid" id="calGrid"></div>
   </div>
 
-  <div class="stats-line" id="statsLine" aria-live="polite">0 รายการ</div>
+  <!-- Stats Summary -->
+  <div class="stats-summary" id="statsLine" aria-live="polite">
+    <div class="stat-pill"><span class="stat-icon">📝</span><span class="stat-val" id="statTotal">0</span><span class="stat-label">รายการ</span></div>
+    <div class="stat-pill"><span class="stat-icon">🔥</span><span class="stat-val" id="statStreak">0</span><span class="stat-label">วันติด</span></div>
+    <div class="stat-pill"><span class="stat-icon" id="statMoodIcon">😊</span><span class="stat-val" id="statMood">—</span></div>
+  </div>
 
+  <!-- Composer -->
   <div class="composer" id="composer">
+    <div class="composer-focus-ring"></div>
     <textarea id="text" placeholder="วันนี้เป็นยังไงบ้าง? เล่าให้ฟังหน่อย..." maxlength="10000" aria-label="เขียนบันทึก"></textarea>
-    <div class="moods" id="moods"></div>
-    <div class="composer-foot">
-      <input type="text" id="tags" placeholder="แท็ก คั่นด้วยจุลภาค เช่น งาน, ออกกำลังกาย" maxlength="500" aria-label="แท็ก">
-      <button class="save-btn" id="saveBtn">บันทึก</button>
+    <div class="composer-bottom">
+      <div class="moods" id="moods"></div>
+      <div class="composer-meta">
+        <div class="composer-meta-row">
+          <div class="meta-input-group">
+            <label class="meta-label">แท็ก</label>
+            <input type="text" id="tags" placeholder="งาน, ออกกำลังกาย" maxlength="500" aria-label="แท็ก">
+          </div>
+          <div class="meta-input-group">
+            <label class="meta-label">โฟลเดอร์</label>
+            <select id="folderSelect" class="folder-select" aria-label="เลือกโฟลเดอร์">
+              <option value="">ไม่มี</option>
+            </select>
+          </div>
+        </div>
+        <button class="save-btn" id="saveBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18"><polyline points="20 6 9 17 4 12"/></svg>
+          <span>บันทึก</span>
+        </button>
+      </div>
     </div>
   </div>
 
+  <!-- Filters -->
   <div class="filters">
-    <input type="text" id="search" placeholder="ค้นหา" aria-label="ค้นหารายการ">
-    <button class="chip" data-range="all">ทั้งหมด</button>
-    <button class="chip" data-range="today">วันนี้</button>
-    <button class="chip" data-range="week">7 วัน</button>
-    <button class="chip" data-range="month">30 วัน</button>
+    <div class="search-box">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" id="search" placeholder="ค้นหา..." aria-label="ค้นหารายการ">
+    </div>
+    <div class="filter-chips">
+      <button class="filter-chip" data-range="all">ทั้งหมด</button>
+      <button class="filter-chip" data-range="today">วันนี้</button>
+      <button class="filter-chip" data-range="week">7 วัน</button>
+      <button class="filter-chip" data-range="month">30 วัน</button>
+    </div>
   </div>
 
   <div id="list"></div>
 
-  <footer>ข้อมูลถูกเก็บไว้ใน Supabase · กด ส่งออก เพื่อสำรองข้อมูลเป็นระยะ</footer>
+  <footer>ข้อมูลถูกเก็บไว้ใน Supabase · กดส่งออกเพื่อสำรองข้อมูลเป็นระยะ</footer>
 </div>
 
 <button class="fab hidden" id="fabBtn" aria-label="เขียนบันทึกใหม่">＋</button>
 
 <div class="modal-overlay" id="modalOverlay" hidden role="dialog" aria-modal="true"></div>
 <div class="toast-container" id="toastContainer" aria-live="polite"></div>
+
+<!-- ========== FOCUS MODE ========== -->
+<div class="focus-overlay hidden" id="focusOverlay">
+  <button class="focus-close" id="focusClose" aria-label="ปิดโหมดโฟกัส">✕ กลับ</button>
+  <textarea class="focus-textarea" id="focusText" placeholder="เขียนอะไรก็ได้...ไม่มีอะไรกวนคุณ" maxlength="10000"></textarea>
+  <div class="focus-footer">
+    <div class="focus-moods" id="focusMoods"></div>
+    <button class="focus-save" id="focusSave">บันทึก</button>
+  </div>
+</div>
 
 <!--
   ============================================================

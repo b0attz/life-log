@@ -32,6 +32,7 @@ CREATE TABLE entries (
   text text DEFAULT '',
   mood text,
   tags text[] DEFAULT '{}',
+  folder_id text,                          /* link to folders */
   user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE,
   created_at timestamptz DEFAULT now()
 );
@@ -40,6 +41,55 @@ ALTER TABLE entries ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Users can CRUD own entries"
   ON entries FOR ALL
+  USING (auth.uid() = user_id);
+
+/* ---- folders ---- */
+CREATE TABLE folders (
+  id text PRIMARY KEY,
+  name text NOT NULL,
+  color text DEFAULT '#4a5a6a',
+  icon text DEFAULT '📁',
+  sort_order integer DEFAULT 0,
+  user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE,
+  created_at timestamptz DEFAULT now()
+);
+
+ALTER TABLE folders ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can CRUD own folders"
+  ON folders FOR ALL
+  USING (auth.uid() = user_id);
+
+/* ---- goals ---- */
+CREATE TABLE goals (
+  id text PRIMARY KEY,
+  title text NOT NULL,
+  description text DEFAULT '',
+  type text DEFAULT 'daily' CHECK (type IN ('daily','weekly','custom')),
+  user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE,
+  created_at timestamptz DEFAULT now(),
+  archived boolean DEFAULT false
+);
+
+ALTER TABLE goals ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can CRUD own goals"
+  ON goals FOR ALL
+  USING (auth.uid() = user_id);
+
+/* ---- goal_logs ---- */
+CREATE TABLE goal_logs (
+  id text PRIMARY KEY,
+  goal_id text REFERENCES goals(id) ON DELETE CASCADE,
+  date text NOT NULL,                    /* YYYY-MM-DD */
+  completed boolean DEFAULT true,
+  user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE
+);
+
+ALTER TABLE goal_logs ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can CRUD own goal_logs"
+  ON goal_logs FOR ALL
   USING (auth.uid() = user_id);
 ```
 
