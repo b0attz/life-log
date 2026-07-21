@@ -1,4 +1,4 @@
-var CACHE_NAME = 'life-log-v7';
+var CACHE_NAME = 'life-log-v8';
 var ASSETS = ['/', '/index.html', '/style.css', '/app.js', '/manifest.json'];
 
 self.addEventListener('install', function(e) {

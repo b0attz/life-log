@@ -1931,6 +1931,13 @@ document.getElementById('focusSave').addEventListener('click', function() {
    Init
    ========================================================= */
 (function() {
+  /* Check for existing session (handles OAuth redirect hash) */
+  supabase.auth.getSession().then(function(result) {
+    if (result.data && result.data.session && result.data.session.user) {
+      showApp(result.data.session.user);
+    }
+  });
+
   /* Restore saved range filter */
   var savedRange = localStorage.getItem(RANGE_KEY);
   if (savedRange && ['all', 'today', 'week', 'month'].indexOf(savedRange) !== -1) {
