@@ -187,6 +187,13 @@ document.getElementById('resetForm').addEventListener('submit', function(e) {
   });
 });
 
+/* --- Google Login --- */
+document.getElementById('googleLoginBtn').addEventListener('click', function() {
+  supabase.auth.signInWithOAuth({ provider: 'google', options: {
+    redirectTo: window.location.origin + window.location.pathname
+  }});
+});
+
 /* --- Logout --- */
 document.getElementById('navLogout').addEventListener('click', function() {
   closeSidebar();
@@ -271,10 +278,18 @@ async function loadEntries() {
   entries = res.data || [];
 }
 
+var ENTRY_COLUMNS = ['id','ts','text','mood','tags','folder_id','user_id','images'];
+
+function sanitizeEntry(e) {
+  var clean = {};
+  ENTRY_COLUMNS.forEach(function(k) { if (e[k] !== undefined) clean[k] = e[k]; });
+  return clean;
+}
+
 async function persistEntry(entry) {
   if (!currentUser) return false;
   entry.user_id = currentUser.id;
-  var res = await supabase.from('entries').upsert(entry, { onConflict: 'id' });
+  var res = await supabase.from('entries').upsert(sanitizeEntry(entry), { onConflict: 'id' });
   if (res.error) { showToast('บันทึกไม่สำเร็จ — ' + res.error.message, 'error'); return false; }
   return true;
 }
@@ -288,7 +303,7 @@ async function deleteEntryFromDB(id) {
 
 async function persistAllEntries() {
   if (!currentUser) return false;
-  var toUpsert = entries.map(function(e) { e.user_id = currentUser.id; return e; });
+  var toUpsert = entries.map(function(e) { e.user_id = currentUser.id; return sanitizeEntry(e); });
   var res = await supabase.from('entries').upsert(toUpsert, { onConflict: 'id' });
   if (res.error) { showToast('บันทึกไม่สำเร็จ — ' + res.error.message, 'error'); return false; }
   return true;
@@ -518,11 +533,14 @@ function resetComposerMood() {
 }
 
 var pendingImages = [];
+var imageUploadAbort = null;
 
 function initImageUpload() {
+  if (imageUploadAbort) imageUploadAbort.abort();
+  imageUploadAbort = new AbortController();
   var area = document.getElementById('imageUploadArea');
   var input = document.getElementById('imageInput');
-  area.addEventListener('click', function() { input.click(); });
+  if (!area || !input) return;
   input.addEventListener('change', function(e) {
     Array.from(e.target.files).forEach(function(file) {
       if (file.size > 5 * 1024 * 1024) { showToast('รูปภาพต้องไม่เกิน 5MB', 'error'); return; }
@@ -531,7 +549,7 @@ function initImageUpload() {
       renderImagePreviews();
     });
     input.value = '';
-  });
+  }, { signal: imageUploadAbort.signal });
 }
 
 function renderImagePreviews() {
@@ -777,7 +795,7 @@ function render() {
       if ((e.images || []).length) {
         html += '<div class="entry-images">';
         for (var img = 0; img < e.images.length; img++) {
-          html += '<img src="' + escapeHtml(e.images[img]) + '" alt="รูปภาพ" loading="lazy">';
+          html += '<img src="' + escapeHtml(e.images[img]) + '" alt="รูปภาพ" loading="lazy" data-lightbox="' + escapeHtml(e.images[img]) + '" data-idx="' + img + '" data-total="' + e.images.length + '">';
         }
         html += '</div>';
       }
@@ -1004,9 +1022,10 @@ function openExportModal() {
 /* =========================================================
    Import
    ========================================================= */
-function importEntries() { document.getElementById('importFile').click(); }
+function importEntries() { var el = document.getElementById('importFile'); if (el) el.click(); }
 
-document.getElementById('importFile').addEventListener('change', function(e) {
+var importFileEl = document.getElementById('importFile');
+if (importFileEl) importFileEl.addEventListener('change', function(e) {
   var f = e.target.files[0];
   if (!f) return;
   var r = new FileReader();
@@ -1585,6 +1604,41 @@ function openDashboard() {
   }
   html += '</div>';
 
+  /* Mood trend — last 14 days */
+  html += '<div class="dash-section"><div class="dash-section-title">📈 อารมณ์ 14 วันล่าสุด</div>';
+  var fmtShort = new Intl.DateTimeFormat('th-TH', { day: 'numeric', month: 'short' });
+  var moodByDay = {};
+  entries.forEach(function(e) {
+    if (!e.mood) return;
+    var dk = dayKey(e.ts);
+    if (!moodByDay[dk]) moodByDay[dk] = [];
+    moodByDay[dk].push(e.mood);
+  });
+  var trendDays = [];
+  for (var td = 13; td >= 0; td--) {
+    var dd = new Date(); dd.setDate(dd.getDate() - td);
+    var dk2 = dd.getFullYear() + '-' + String(dd.getMonth()+1).padStart(2,'0') + '-' + String(dd.getDate()).padStart(2,'0');
+    trendDays.push({ key: dk2, date: dd, moods: moodByDay[dk2] || [] });
+  }
+  var uniqueMoods = [];
+  var moodSeen = {};
+  entries.forEach(function(e) { if (e.mood && !moodSeen[e.mood]) { moodSeen[e.mood] = true; uniqueMoods.push(e.mood); } });
+  if (uniqueMoods.length) {
+    html += '<div class="mood-trend">';
+    trendDays.forEach(function(d) {
+      var emoji = d.moods.length ? d.moods[d.moods.length - 1] : '';
+      html += '<div class="mood-trend-day">';
+      html += '<div class="mood-trend-emoji">' + (emoji || '<span class="mood-trend-empty">·</span>') + '</div>';
+      html += '<div class="mood-trend-date">' + fmtShort.format(d.date) + '</div>';
+      if (d.moods.length > 1) html += '<div class="mood-trend-count">×' + d.moods.length + '</div>';
+      html += '</div>';
+    });
+    html += '</div>';
+  } else {
+    html += '<p style="color:var(--muted);font-size:.85rem;">ยังไม่มีข้อมูลอารมณ์</p>';
+  }
+  html += '</div>';
+
   /* Tag chart */
   html += '<div class="dash-section"><div class="dash-section-title">🏷️ แท็กยอดนิยม</div>';
   var tagCounts = {};
@@ -1695,6 +1749,40 @@ function updateOnbStep() {
 }
 
 /* =========================================================
+   Lightbox
+   ========================================================= */
+var lightboxImages = [];
+var lightboxIdx = 0;
+
+function openLightbox(src, allSrcs) {
+  lightboxImages = allSrcs || [src];
+  lightboxIdx = lightboxImages.indexOf(src);
+  if (lightboxIdx === -1) lightboxIdx = 0;
+  var lb = document.getElementById('lightbox');
+  updateLightbox();
+  lb.hidden = false;
+  requestAnimationFrame(function() { lb.classList.add('open'); });
+  document.body.style.overflow = 'hidden';
+}
+
+function closeLightbox() {
+  var lb = document.getElementById('lightbox');
+  lb.classList.remove('open');
+  setTimeout(function() { lb.hidden = true; }, 200);
+  document.body.style.overflow = '';
+}
+
+function updateLightbox() {
+  document.getElementById('lightboxImg').src = lightboxImages[lightboxIdx];
+  document.getElementById('lightboxCounter').textContent = (lightboxIdx + 1) + ' / ' + lightboxImages.length;
+  document.getElementById('lightboxPrev').style.display = lightboxImages.length > 1 ? '' : 'none';
+  document.getElementById('lightboxNext').style.display = lightboxImages.length > 1 ? '' : 'none';
+}
+
+function lightboxPrev() { lightboxIdx = (lightboxIdx - 1 + lightboxImages.length) % lightboxImages.length; updateLightbox(); }
+function lightboxNext() { lightboxIdx = (lightboxIdx + 1) % lightboxImages.length; updateLightbox(); }
+
+/* =========================================================
    Event Listeners (DOM ready — scripts at end of body)
    ========================================================= */
 document.getElementById('onbNext').addEventListener('click', function() {
@@ -1789,6 +1877,27 @@ document.getElementById('list').addEventListener('click', function(e) {
   if (clearFolder) { activeFolderFilter = null; render(); return; }
   var clearTag = e.target.closest('#clearTagFilter');
   if (clearTag) { activeTag = null; render(); return; }
+  var imgEl = e.target.closest('.entry-images img');
+  if (imgEl) {
+    var container = imgEl.closest('.entry-images');
+    var allImgs = Array.from(container.querySelectorAll('img')).map(function(i) { return i.src; });
+    openLightbox(imgEl.src, allImgs);
+    return;
+  }
+});
+
+/* Lightbox */
+document.getElementById('lightboxClose').addEventListener('click', closeLightbox);
+document.getElementById('lightboxPrev').addEventListener('click', lightboxPrev);
+document.getElementById('lightboxNext').addEventListener('click', lightboxNext);
+document.getElementById('lightbox').addEventListener('click', function(e) {
+  if (e.target === this) closeLightbox();
+});
+document.addEventListener('keydown', function(e) {
+  if (document.getElementById('lightbox').hidden) return;
+  if (e.key === 'Escape') closeLightbox();
+  if (e.key === 'ArrowLeft') lightboxPrev();
+  if (e.key === 'ArrowRight') lightboxNext();
 });
 
 /* Folder select change */
