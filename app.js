@@ -95,6 +95,10 @@ function showApp(user) {
   Promise.all([p1, p2, p3, p4]).then(function() {
     renderFolderSelect();
     render();
+    initImageUpload();
+    if (!localStorage.getItem('lifelog.onboarded')) {
+      showOnboarding();
+    }
   });
 }
 
@@ -147,6 +151,42 @@ document.getElementById('signupForm').addEventListener('submit', function(e) {
   });
 });
 
+/* --- Forgot password --- */
+document.getElementById('forgotPassBtn').addEventListener('click', function() {
+  document.getElementById('loginForm').classList.add('hidden');
+  document.getElementById('signupForm').classList.add('hidden');
+  document.getElementById('resetForm').classList.remove('hidden');
+  document.getElementById('authError').classList.add('hidden');
+  document.getElementById('resetEmail').value = document.getElementById('loginEmail').value;
+});
+
+document.getElementById('backToLogin').addEventListener('click', function() {
+  document.getElementById('resetForm').classList.add('hidden');
+  document.getElementById('loginForm').classList.remove('hidden');
+});
+
+document.getElementById('resetForm').addEventListener('submit', function(e) {
+  e.preventDefault();
+  var email = document.getElementById('resetEmail').value.trim();
+  var btn = this.querySelector('.auth-submit');
+  var errEl = document.getElementById('authError');
+  btn.disabled = true; btn.textContent = 'กำลังส่ง...';
+  errEl.classList.add('hidden');
+
+  supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin
+  }).then(function(res) {
+    btn.disabled = false; btn.textContent = 'ส่งลิงก์รีเซ็ตรหัสผ่าน';
+    if (res.error) { errEl.textContent = res.error.message; errEl.classList.remove('hidden'); }
+    else {
+      errEl.textContent = 'ส่งลิงก์สำหรับตั้งรหัสผ่านใหม่ไปที่อีเมลของคุณแล้ว';
+      errEl.classList.remove('hidden');
+      errEl.style.background = 'rgba(74,138,90,.08)';
+      errEl.style.color = 'var(--success)';
+    }
+  });
+});
+
 /* --- Logout --- */
 document.getElementById('navLogout').addEventListener('click', function() {
   closeSidebar();
@@ -155,6 +195,15 @@ document.getElementById('navLogout').addEventListener('click', function() {
 
 /* --- Auth state listener --- */
 supabase.auth.onAuthStateChange(function(event, session) {
+  if (event === 'PASSWORD_RECOVERY') {
+    var newPass = prompt('ตั้งรหัสผ่านใหม่ (≥ 6 ตัวอักษร):');
+    if (newPass && newPass.length >= 6) {
+      supabase.auth.updateUser({ password: newPass }).then(function(res) {
+        if (res.error) alert('ผิดพลาด: ' + res.error.message);
+        else alert('เปลี่ยนรหัสผ่านสำเร็จ!');
+      });
+    }
+  }
   if (session && session.user) { showApp(session.user); }
   else { currentUser = null; entries = []; folders = []; goals = []; goalLogs = {}; activeFolderFilter = null; selectedFolderId = ''; showAuth(); }
 });
@@ -216,6 +265,7 @@ function updateDarkToggle() {
    ========================================================= */
 async function loadEntries() {
   if (!currentUser) return;
+  if (!entries.length) showLoading('กำลังโหลดบันทึก...');
   var res = await supabase.from('entries').select('*').eq('user_id', currentUser.id).order('ts', { ascending: false });
   if (res.error) { showToast('โหลดข้อมูลไม่สำเร็จ', 'error'); return; }
   entries = res.data || [];
@@ -249,6 +299,7 @@ async function persistAllEntries() {
    ========================================================= */
 async function loadFolders() {
   if (!currentUser) return;
+  if (!folders.length) showLoading('กำลังโหลด...');
   var res = await supabase.from('folders').select('*').eq('user_id', currentUser.id).order('sort_order', { ascending: true });
   if (res.error) { showToast('โหลดโฟลเดอร์ไม่สำเร็จ', 'error'); return; }
   folders = res.data || [];
@@ -276,6 +327,7 @@ async function deleteFolderFromDB(id) {
    ========================================================= */
 async function loadGoals() {
   if (!currentUser) return;
+  if (!goals.length) showLoading('กำลังโหลด...');
   var res = await supabase.from('goals').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: true });
   if (res.error) { showToast('โหลดเป้าหมายไม่สำเร็จ', 'error'); return; }
   goals = (res.data || []).filter(function(g) { return !g.archived; });
@@ -376,6 +428,15 @@ function showToast(msg, type) {
   }, 4000);
 }
 
+function showLoading(msg) {
+  var list = document.getElementById('list');
+  list.innerHTML = '<div class="loading-overlay"><div class="spinner"></div><span>' + (msg || 'กำลังโหลด...') + '</span></div>';
+}
+
+function hideLoading() {
+  /* no-op — render() replaces content */
+}
+
 /* =========================================================
    Modal
    ========================================================= */
@@ -456,10 +517,63 @@ function resetComposerMood() {
   Array.from(document.getElementById('moods').children).forEach(function(c) { c.classList.remove('on'); });
 }
 
+var pendingImages = [];
+
+function initImageUpload() {
+  var area = document.getElementById('imageUploadArea');
+  var input = document.getElementById('imageInput');
+  area.addEventListener('click', function() { input.click(); });
+  input.addEventListener('change', function(e) {
+    Array.from(e.target.files).forEach(function(file) {
+      if (file.size > 5 * 1024 * 1024) { showToast('รูปภาพต้องไม่เกิน 5MB', 'error'); return; }
+      var url = URL.createObjectURL(file);
+      pendingImages.push({ file: file, url: url });
+      renderImagePreviews();
+    });
+    input.value = '';
+  });
+}
+
+function renderImagePreviews() {
+  var row = document.getElementById('imagePreviewRow');
+  row.innerHTML = '';
+  pendingImages.forEach(function(img, i) {
+    var wrap = document.createElement('div');
+    wrap.className = 'image-preview-wrap';
+    var imgEl = document.createElement('img');
+    imgEl.className = 'image-preview';
+    imgEl.src = img.url;
+    var del = document.createElement('button');
+    del.className = 'image-preview-del';
+    del.textContent = '✕';
+    del.addEventListener('click', function() {
+      URL.revokeObjectURL(pendingImages[i].url);
+      pendingImages.splice(i, 1);
+      renderImagePreviews();
+    });
+    wrap.appendChild(imgEl);
+    wrap.appendChild(del);
+    row.appendChild(wrap);
+  });
+}
+
+async function uploadImages(files) {
+  var urls = [];
+  for (var i = 0; i < files.length; i++) {
+    var file = files[i];
+    var path = currentUser.id + '/' + Date.now() + '-' + Math.random().toString(36).slice(2, 7) + '.' + file.name.split('.').pop();
+    var res = await supabase.storage.from('entry-images').upload(path, file);
+    if (res.error) { showToast('อัปโหลดรูปไม่สำเร็จ', 'error'); continue; }
+    var pub = supabase.storage.from('entry-images').getPublicUrl(path);
+    if (pub.data && pub.data.publicUrl) urls.push(pub.data.publicUrl);
+  }
+  return urls;
+}
+
 /* =========================================================
    Entry CRUD
    ========================================================= */
-function saveEntry() {
+async function saveEntry() {
   var textEl = document.getElementById('text');
   var tagsEl = document.getElementById('tags');
   var text = textEl.value.trim();
@@ -472,6 +586,13 @@ function saveEntry() {
     tags: tagsEl.value.split(',').map(function(t) { return t.trim(); }).filter(Boolean),
     folder_id: selectedFolderId
   };
+  if (pendingImages.length) {
+    var imageUrls = await uploadImages(pendingImages.map(function(p) { return p.file; }));
+    entry.images = imageUrls;
+    pendingImages.forEach(function(p) { URL.revokeObjectURL(p.url); });
+    pendingImages = [];
+    document.getElementById('imagePreviewRow').innerHTML = '';
+  }
   entries.unshift(entry);
   persistEntry(entry).then(function(ok) {
     if (!ok) { entries.shift(); return; }
@@ -650,6 +771,13 @@ function render() {
         html += '<div class="entry-tags">';
         for (var t = 0; t < e.tags.length; t++) {
           html += '<span class="tag" data-tag="' + escapeHtml(e.tags[t]) + '">#' + escapeHtml(e.tags[t]) + '</span>';
+        }
+        html += '</div>';
+      }
+      if ((e.images || []).length) {
+        html += '<div class="entry-images">';
+        for (var img = 0; img < e.images.length; img++) {
+          html += '<img src="' + escapeHtml(e.images[img]) + '" alt="รูปภาพ" loading="lazy">';
         }
         html += '</div>';
       }
@@ -891,6 +1019,7 @@ document.getElementById('importFile').addEventListener('change', function(e) {
         if (x.text != null && typeof x.text !== 'string') return false;
         if (x.mood != null && typeof x.mood !== 'string') return false;
         if (x.tags != null && !Array.isArray(x.tags)) return false;
+        if (x.images != null && !Array.isArray(x.images)) return false;
         return true;
       });
       var ids = {};
@@ -1537,8 +1666,49 @@ function closeFocusMode() {
 }
 
 /* =========================================================
+   Onboarding
+   ========================================================= */
+var onbCurrentStep = 1;
+var onbTotalSteps = 4;
+
+function showOnboarding() {
+  document.getElementById('onboardingOverlay').classList.remove('hidden');
+  onbCurrentStep = 1;
+  updateOnbStep();
+}
+
+function completeOnboarding() {
+  localStorage.setItem('lifelog.onboarded', '1');
+  document.getElementById('onboardingOverlay').classList.add('hidden');
+}
+
+function updateOnbStep() {
+  for (var i = 1; i <= onbTotalSteps; i++) {
+    var step = document.getElementById('onbStep' + i);
+    if (step) step.classList.toggle('hidden', i !== onbCurrentStep);
+  }
+  document.querySelectorAll('.onb-dot').forEach(function(d) {
+    d.classList.toggle('on', parseInt(d.dataset.step) === onbCurrentStep);
+  });
+  var btn = document.getElementById('onbNext');
+  btn.textContent = onbCurrentStep === onbTotalSteps ? 'เริ่มเลย! →' : 'ถัดไป →';
+}
+
+/* =========================================================
    Event Listeners (DOM ready — scripts at end of body)
    ========================================================= */
+document.getElementById('onbNext').addEventListener('click', function() {
+  if (onbCurrentStep >= onbTotalSteps) { completeOnboarding(); return; }
+  onbCurrentStep++;
+  updateOnbStep();
+});
+document.querySelectorAll('.onb-dot').forEach(function(d) {
+  d.addEventListener('click', function() {
+    onbCurrentStep = parseInt(d.dataset.step);
+    updateOnbStep();
+  });
+});
+
 document.getElementById('saveBtn').addEventListener('click', saveEntry);
 document.getElementById('themeToggleBtn').addEventListener('click', function() {
   themePickerVisible = !themePickerVisible;

@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Life Log — บันทึกชีวิต</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#5b6b7f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
@@ -25,6 +29,9 @@
     <form class="auth-form" id="loginForm">
       <input type="email" id="loginEmail" placeholder="อีเมล" required autocomplete="email">
       <input type="password" id="loginPass" placeholder="รหัสผ่าน" required autocomplete="current-password" minlength="6">
+      <div style="text-align:right;margin-top:-4px;">
+        <button type="button" class="text-link" id="forgotPassBtn">ลืมรหัสผ่าน?</button>
+      </div>
       <button type="submit" class="auth-submit">เข้าสู่ระบบ</button>
     </form>
 
@@ -32,6 +39,13 @@
       <input type="email" id="signupEmail" placeholder="อีเมล" required autocomplete="email">
       <input type="password" id="signupPass" placeholder="รหัสผ่าน (≥ 6 ตัวอักษร)" required autocomplete="new-password" minlength="6">
       <button type="submit" class="auth-submit">สมัครสมาชิก</button>
+    </form>
+
+    <form class="auth-form hidden" id="resetForm">
+      <p style="font-size:.85rem;color:var(--muted);margin-bottom:8px;">ใส่อีเมลของคุณ เราจะส่งลิงก์สำหรับตั้งรหัสผ่านใหม่</p>
+      <input type="email" id="resetEmail" placeholder="อีเมล" required autocomplete="email">
+      <button type="submit" class="auth-submit">ส่งลิงก์รีเซ็ตรหัสผ่าน</button>
+      <button type="button" class="text-link" id="backToLogin" style="margin-top:8px;">← กลับไปเข้าสู่ระบบ</button>
     </form>
 
     <div class="auth-error hidden" id="authError"></div>
@@ -139,6 +153,11 @@
     <textarea id="text" placeholder="วันนี้เป็นยังไงบ้าง? เล่าให้ฟังหน่อย..." maxlength="10000" aria-label="เขียนบันทึก"></textarea>
     <div class="composer-bottom">
       <div class="moods" id="moods"></div>
+      <div class="image-upload-area" id="imageUploadArea">
+        <input type="file" id="imageInput" accept="image/*" multiple hidden>
+        <span>📷 คลิกเพื่อเพิ่มรูปภาพ</span>
+      </div>
+      <div class="image-preview-row" id="imagePreviewRow"></div>
       <div class="composer-meta">
         <div class="composer-meta-row">
           <div class="meta-input-group">
@@ -181,6 +200,40 @@
 
 <button class="fab hidden" id="fabBtn" aria-label="เขียนบันทึกใหม่">＋</button>
 
+<div class="onboarding-overlay hidden" id="onboardingOverlay">
+  <div class="onboarding-card">
+    <div class="onboarding-step" id="onbStep1">
+      <div class="onboarding-emoji">📝</div>
+      <h2>ยินดีต้อนรับสู่ Life Log</h2>
+      <p>บันทึกเรื่องราวในชีวิตของคุณทุกวัน</p>
+    </div>
+    <div class="onboarding-step hidden" id="onbStep2">
+      <div class="onboarding-emoji">😊</div>
+      <h2>เลือกอารมณ์</h2>
+      <p>บันทึกอารมณ์ของคุณในแต่ละวัน เพื่อทำความเข้าใจตัวเองมากขึ้น</p>
+    </div>
+    <div class="onboarding-step hidden" id="onbStep3">
+      <div class="onboarding-emoji">📁</div>
+      <h2>จัดระเบียบด้วยโฟลเดอร์</h2>
+      <p>สร้างโฟลเดอร์เพื่อจัดกลุ่มบันทึกของคุณ</p>
+    </div>
+    <div class="onboarding-step hidden" id="onbStep4">
+      <div class="onboarding-emoji">🎯</div>
+      <h2>ตั้งเป้าหมาย</h2>
+      <p>สร้างเป้าหมายรายวันและติดตาม streak ของคุณ</p>
+    </div>
+    <div class="onboarding-nav">
+      <div class="onboarding-dots">
+        <span class="onb-dot on" data-step="1"></span>
+        <span class="onb-dot" data-step="2"></span>
+        <span class="onb-dot" data-step="3"></span>
+        <span class="onb-dot" data-step="4"></span>
+      </div>
+      <button class="onboarding-btn" id="onbNext">ถัดไป →</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modalOverlay" hidden role="dialog" aria-modal="true"></div>
 <div class="toast-container" id="toastContainer" aria-live="polite"></div>
 
@@ -205,5 +258,10 @@
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="app.js"></script>
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js');
+  }
+</script>
 </body>
 </html>

@@ -1,0 +1,16 @@
+{
+  "name": "Life Log — บันทึกชีวิต",
+  "short_name": "Life Log",
+  "description": "บันทึกชีวิตของคุณ",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8f7f4",
+  "theme_color": "#5b6b7f",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📝</text></svg>",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

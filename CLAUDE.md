@@ -101,7 +101,12 @@ CREATE POLICY "Users can CRUD own goal_logs"
 - Dark mode follows `prefers-color-scheme` on first visit, toggled via 🌙/☀️ button
 - Export/Import buttons back up or restore all entries as JSON
 - Auth: login/signup screen shown when not authenticated
+- Password reset: "ลืมรหัสผ่าน?" link on login form
 - FAB (floating action button) scrolls to composer
+- Image attachments: upload images via Supabase Storage (requires `entry-images` bucket)
+- PWA: installable on mobile, offline caching via service worker
+- Onboarding: 4-step guide shown to first-time users
+- Loading states: spinner shown during initial data load
 
 ## Development
 
