@@ -793,6 +793,7 @@ function render() {
       var el = document.createElement('div');
       el.className = 'entry';
       el.dataset.id = e.id;
+      if (e.mood) el.dataset.mood = e.mood;
       var ed = new Date(e.ts);
       var html = '<div class="entry-date">';
       html += '<span class="entry-day">' + fmtDayNum.format(e.ts) + '</span>';
