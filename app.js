@@ -1599,7 +1599,7 @@ function openDashboard() {
     html += '<div class="mood-chart">';
     moodEntries.forEach(function(m) {
       var pct = maxMood > 0 ? (m[1] / maxMood * 100) : 0;
-      html += '<div class="mood-chart-row"><span class="mood-chart-emoji">' + escapeHtml(m[0]) + '</span><div class="mood-chart-bar-wrap"><div class="mood-chart-bar" style="width:' + pct + '%"></div></div><span class="mood-chart-count">' + m[1] + '</span></div>';
+      html += '<div class="mood-chart-row"><span class="mood-chart-emoji">' + escapeHtml(m[0]) + '</span><div class="mood-chart-bar-wrap"><div class="mood-chart-bar" style="transform:scaleX(' + (pct / 100) + ')"></div></div><span class="mood-chart-count">' + m[1] + '</span></div>';
     });
     html += '</div>';
   } else {
@@ -1652,7 +1652,7 @@ function openDashboard() {
     html += '<div class="tag-chart">';
     tagEntries.forEach(function(t) {
       var pct = maxTag > 0 ? (t[1] / maxTag * 100) : 0;
-      html += '<div class="tag-chart-row"><span class="tag-chart-label">#' + escapeHtml(t[0]) + '</span><div class="tag-chart-bar-wrap"><div class="tag-chart-bar" style="width:' + pct + '%"></div></div><span class="tag-chart-count">' + t[1] + '</span></div>';
+      html += '<div class="tag-chart-row"><span class="tag-chart-label">#' + escapeHtml(t[0]) + '</span><div class="tag-chart-bar-wrap"><div class="tag-chart-bar" style="transform:scaleX(' + (pct / 100) + ')"></div></div><span class="tag-chart-count">' + t[1] + '</span></div>';
     });
     html += '</div>';
   } else {
@@ -1842,14 +1842,34 @@ document.getElementById('search').addEventListener('input', function() {
   searchTimer = setTimeout(function() { render(); }, 250);
 });
 
-/* Keyboard shortcut */
+/* Keyboard shortcuts */
 document.addEventListener('keydown', function(e) {
   if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
     e.preventDefault();
     if (focusActive) {
-      /* Save from focus mode */
+      document.getElementById('focusSave').click();
     } else {
       saveEntry();
+    }
+  }
+  if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+    e.preventDefault();
+    if (!focusActive) {
+      var searchEl = document.getElementById('search');
+      if (searchEl) searchEl.focus();
+    }
+  }
+  if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
+    e.preventDefault();
+    toggleDark();
+  }
+  if (e.key === 'Escape') {
+    if (focusActive) {
+      closeFocusMode();
+    } else if (!document.getElementById('lightbox').hidden) {
+      closeLightbox();
+    } else if (sidebarOpen) {
+      closeSidebar();
     }
   }
 });
@@ -1898,7 +1918,6 @@ document.getElementById('lightbox').addEventListener('click', function(e) {
 });
 document.addEventListener('keydown', function(e) {
   if (document.getElementById('lightbox').hidden) return;
-  if (e.key === 'Escape') closeLightbox();
   if (e.key === 'ArrowLeft') lightboxPrev();
   if (e.key === 'ArrowRight') lightboxNext();
 });
