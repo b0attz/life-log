@@ -8,6 +8,16 @@ var currentUser = null;
    Constants
    ========================================================= */
 var MOODS = ["😄","🙂","😐","😢","😡","🤩","😴","🤒"];
+var MOOD_STAMPS = {
+  '😄': '☻',
+  '🙂': '☺',
+  '😐': '—',
+  '😢': '☹',
+  '😡': '✘',
+  '🤩': '★',
+  '😴': '☾',
+  '🤒': '？'
+};
 var THEME_KEY = 'lifelog.theme';
 var RANGE_KEY = 'lifelog.range';
 var THEMES = [
@@ -517,11 +527,12 @@ function createMoodPicker(container, initialMood, onChange) {
     var btn = document.createElement('button');
     btn.className = 'mood';
     btn.type = 'button';
-    btn.textContent = m;
+    btn.innerHTML = '<span class="mood-stamp">' + (MOOD_STAMPS[m] || m) + '</span>';
+    btn.dataset.mood = m;
     if (m === selected) btn.classList.add('on');
     btn.addEventListener('click', function() {
       selected = selected === m ? null : m;
-      Array.from(container.children).forEach(function(c) { c.classList.toggle('on', c.textContent === selected); });
+      Array.from(container.children).forEach(function(c) { c.classList.toggle('on', c.dataset.mood === selected); });
       onChange(selected);
     });
     container.appendChild(btn);
@@ -711,6 +722,10 @@ function filtered() {
    ========================================================= */
 var fmtDay = new Intl.DateTimeFormat('th-TH', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 var fmtTime = new Intl.DateTimeFormat('th-TH', { hour: '2-digit', minute: '2-digit' });
+var fmtDayNum = new Intl.DateTimeFormat('th-TH', { day: 'numeric' });
+var fmtDow = new Intl.DateTimeFormat('th-TH', { weekday: 'short' });
+var fmtMon = new Intl.DateTimeFormat('th-TH', { month: 'short' });
+var fmtYear = new Intl.DateTimeFormat('th-TH', { year: 'numeric' });
 
 function dayKey(ts) {
   var d = new Date(ts);
@@ -759,9 +774,9 @@ function render() {
 
   if (!items.length) {
     if (!entries.length) {
-      list.innerHTML += '<div class="empty"><div class="big">🌱</div>ยังไม่มีบันทึก — เริ่มเขียนเรื่องราวแรกของคุณ</div>';
+      list.innerHTML += '<div class="empty"><div class="empty-rule"></div><div class="empty-text">ยังไม่มีบันทึก</div><div class="empty-sub">เริ่มเขียนเรื่องราวแรกของคุณ</div></div>';
     } else {
-      list.innerHTML += '<div class="empty"><div class="big">🔍</div>ยังไม่มีบันทึกตรงเงื่อนไข</div>';
+      list.innerHTML += '<div class="empty"><div class="empty-rule"></div><div class="empty-text">ไม่พบบันทึก</div><div class="empty-sub">ลองเปลี่ยนเงื่อนไขการค้นหา</div></div>';
     }
   } else {
     var lastDay = null;
@@ -778,20 +793,27 @@ function render() {
       var el = document.createElement('div');
       el.className = 'entry';
       el.dataset.id = e.id;
-      var html = '<div class="entry-head">';
-      if (e.mood) html += '<span class="entry-mood">' + escapeHtml(e.mood) + '</span>';
-      html += '<span class="entry-time">' + fmtTime.format(e.ts) + ' น.</span></div>';
+      var ed = new Date(e.ts);
+      var html = '<div class="entry-date">';
+      html += '<span class="entry-day">' + fmtDayNum.format(e.ts) + '</span>';
+      html += '<span class="entry-dow">' + fmtDow.format(e.ts) + '</span>';
+      html += '<span class="entry-mon">' + fmtMon.format(e.ts) + '</span>';
+      html += '<span class="entry-year">' + fmtYear.format(e.ts) + '</span>';
+      html += '</div><div class="entry-body">';
+      html += '<div class="entry-head">';
+      if (e.mood) html += '<span class="entry-mood">' + (MOOD_STAMPS[e.mood] || escapeHtml(e.mood)) + '</span>';
+      html += '<span class="entry-time">' + fmtTime.format(e.ts) + '</span></div>';
       if (e.text) html += '<div class="entry-text">' + escapeHtml(e.text) + '</div>';
       if (e.folder_id) {
         var folder = getFolderById(e.folder_id);
         if (folder) {
-          html += '<div style="margin-top:8px;"><span class="entry-folder"><span class="folder-dot" style="background:' + (folder.color || '#5b6b7f') + ';"></span> ' + (folder.icon || '📁') + ' ' + escapeHtml(folder.name) + '</span></div>';
+          html += '<div class="entry-folder"><span class="folder-dot" style="background:' + (folder.color || '#8B2A1F') + ';"></span> ' + (folder.icon || '📁') + ' ' + escapeHtml(folder.name) + '</div>';
         }
       }
       if ((e.tags || []).length) {
         html += '<div class="entry-tags">';
         for (var t = 0; t < e.tags.length; t++) {
-          html += '<span class="tag" data-tag="' + escapeHtml(e.tags[t]) + '">#' + escapeHtml(e.tags[t]) + '</span>';
+          html += '<span class="tag" data-tag="' + escapeHtml(e.tags[t]) + '">' + escapeHtml(e.tags[t]) + '</span>';
         }
         html += '</div>';
       }
@@ -804,6 +826,7 @@ function render() {
       }
       html += '<button class="entry-edit" aria-label="แก้ไข">แก้ไข</button>';
       html += '<button class="entry-del" aria-label="ลบ">ลบ</button>';
+      html += '</div>';
       el.innerHTML = html;
       list.appendChild(el);
     }
@@ -825,8 +848,8 @@ function renderStats() {
   var counts = {};
   entries.forEach(function(e) { if (e.mood) counts[e.mood] = (counts[e.mood] || 0) + 1; });
   var top = Object.entries(counts).sort(function(a, b) { return b[1] - a[1]; })[0];
-  var moodIcon = top ? top[0] : '😊';
-  var moodText = top ? top[0] : '—';
+  var moodIcon = top ? (MOOD_STAMPS[top[0]] || top[0]) : '☻';
+  var moodText = top ? (MOOD_STAMPS[top[0]] || top[0]) : '—';
 
   document.getElementById('statTotal').textContent = total;
   document.getElementById('statStreak').textContent = streak;
@@ -1599,7 +1622,7 @@ function openDashboard() {
     html += '<div class="mood-chart">';
     moodEntries.forEach(function(m) {
       var pct = maxMood > 0 ? (m[1] / maxMood * 100) : 0;
-      html += '<div class="mood-chart-row"><span class="mood-chart-emoji">' + escapeHtml(m[0]) + '</span><div class="mood-chart-bar-wrap"><div class="mood-chart-bar" style="transform:scaleX(' + (pct / 100) + ')"></div></div><span class="mood-chart-count">' + m[1] + '</span></div>';
+      html += '<div class="mood-chart-row"><span class="mood-chart-emoji">' + (MOOD_STAMPS[m[0]] || escapeHtml(m[0])) + '</span><div class="mood-chart-bar-wrap"><div class="mood-chart-bar" style="transform:scaleX(' + (pct / 100) + ')"></div></div><span class="mood-chart-count">' + m[1] + '</span></div>';
     });
     html += '</div>';
   } else {
@@ -1631,7 +1654,7 @@ function openDashboard() {
     trendDays.forEach(function(d) {
       var emoji = d.moods.length ? d.moods[d.moods.length - 1] : '';
       html += '<div class="mood-trend-day">';
-      html += '<div class="mood-trend-emoji">' + (emoji || '<span class="mood-trend-empty">·</span>') + '</div>';
+      html += '<div class="mood-trend-emoji">' + (emoji ? (MOOD_STAMPS[emoji] || emoji) : '<span class="mood-trend-empty">·</span>') + '</div>';
       html += '<div class="mood-trend-date">' + fmtShort.format(d.date) + '</div>';
       if (d.moods.length > 1) html += '<div class="mood-trend-count">×' + d.moods.length + '</div>';
       html += '</div>';
