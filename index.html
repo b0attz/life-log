@@ -2,16 +2,16 @@
 <html lang="th">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Life Log — บันทึกชีวิต</title>
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#5b6b7f">
+<meta name="theme-color" content="#9c3b22">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="stylesheet" href="style.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400&family=IBM+Plex+Sans+Thai:wght@400;500;600&family=Noto+Serif+Thai:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
+<link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@400;500;600&family=Trirong:ital,wght@0,400;0,600;0,700;1,400;1,600&display=swap" rel="stylesheet">
 </head>
 <body>
 
@@ -42,7 +42,7 @@
     </form>
 
     <form class="auth-form hidden" id="resetForm">
-      <p style="font-size:.85rem;color:var(--muted);margin-bottom:8px;">ใส่อีเมลของคุณ เราจะส่งลิงก์สำหรับตั้งรหัสผ่านใหม่</p>
+      <p style="font-size:.85rem;color:var(--fg-muted);margin-bottom:8px;">ใส่อีเมลของคุณ เราจะส่งลิงก์สำหรับตั้งรหัสผ่านใหม่</p>
       <input type="email" id="resetEmail" placeholder="อีเมล" required autocomplete="email">
       <button type="submit" class="auth-submit">ส่งลิงก์รีเซ็ตรหัสผ่าน</button>
       <button type="button" class="text-link" id="backToLogin" style="margin-top:8px;">← กลับไปเข้าสู่ระบบ</button>
@@ -67,53 +67,24 @@
     <button class="sidebar-close" id="sidebarClose" aria-label="ปิดเมนู">✕</button>
   </div>
   <div class="sidebar-user">
-    <div class="sidebar-avatar">📝</div>
+    <div class="sidebar-email-label">บัญชีของคุณ</div>
     <div class="sidebar-email" id="sidebarEmail"></div>
   </div>
   <div class="sidebar-nav">
-    <button class="sidebar-item" id="navFocus">
-      <span class="sidebar-icon">🎯</span>
-      <span>โหมดโฟกัส</span>
-    </button>
-    <button class="sidebar-item" id="navGoals">
-      <span class="sidebar-icon">🏆</span>
-      <span>เป้าหมาย</span>
-    </button>
-    <button class="sidebar-item" id="navFolders">
-      <span class="sidebar-icon">📁</span>
-      <span>โฟลเดอร์</span>
-    </button>
-    <button class="sidebar-item" id="navTags">
-      <span class="sidebar-icon">🏷️</span>
-      <span>แท็ก</span>
-    </button>
+    <button class="sidebar-item" id="navFocus">โหมดโฟกัส</button>
+    <button class="sidebar-item" id="navGoals">เป้าหมาย</button>
+    <button class="sidebar-item" id="navFolders">โฟลเดอร์</button>
+    <button class="sidebar-item" id="navTags">แท็ก</button>
     <div class="sidebar-divider"></div>
-    <button class="sidebar-item" id="navDashboard">
-      <span class="sidebar-icon">📊</span>
-      <span>สถิติ</span>
-    </button>
-    <button class="sidebar-item" id="navExport">
-      <span class="sidebar-icon">📤</span>
-      <span>ส่งออก</span>
-    </button>
-    <button class="sidebar-item" id="navImport">
-      <span class="sidebar-icon">📥</span>
-      <span>นำเข้า</span>
-    </button>
+    <button class="sidebar-item" id="navDashboard">สถิติ</button>
+    <button class="sidebar-item" id="navExport">ส่งออก</button>
+    <button class="sidebar-item" id="navImport">นำเข้า</button>
     <div class="sidebar-divider"></div>
-    <button class="sidebar-item" id="navTheme">
-      <span class="sidebar-icon">🎨</span>
-      <span>ธีม</span>
-    </button>
-    <button class="sidebar-item" id="navDark">
-      <span class="sidebar-icon" id="darkIcon">🌙</span>
-      <span id="darkLabel">โหมดมืด</span>
-    </button>
+    <button class="sidebar-item" id="navCalendar">ปฏิทิน</button>
+    <button class="sidebar-item" id="navTheme">ธีม</button>
+    <button class="sidebar-item" id="navDark"><span id="darkLabel">โหมดมืด</span></button>
     <div class="sidebar-divider"></div>
-    <button class="sidebar-item sidebar-item-danger" id="navLogout">
-      <span class="sidebar-icon">🚪</span>
-      <span>ออกจากระบบ</span>
-    </button>
+    <button class="sidebar-item sidebar-item-danger" id="navLogout">ออกจากระบบ</button>
   </div>
 </nav>
 
@@ -125,14 +96,6 @@
       <span></span><span></span><span></span>
     </button>
     <h1 class="topbar-title">Life <span>Log</span></h1>
-    <div class="topbar-actions">
-      <button class="icon-btn" id="themeToggleBtn" aria-label="เปลี่ยนธีม">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-      </button>
-      <button class="icon-btn" id="calendarBtn" aria-label="ปฏิทิน">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-      </button>
-    </div>
   </div>
 
   <div class="theme-picker hidden" id="themePicker"></div>
@@ -149,41 +112,37 @@
 
   <!-- Stats Summary -->
   <div class="stats-summary" id="statsLine" aria-live="polite">
-    <div class="stat-pill"><span class="stat-icon">📝</span><span class="stat-val" id="statTotal">0</span><span class="stat-label">รายการ</span></div>
-    <div class="stat-pill"><span class="stat-icon">🔥</span><span class="stat-val" id="statStreak">0</span><span class="stat-label">วันติด</span></div>
-    <div class="stat-pill"><span class="stat-icon" id="statMoodIcon">😊</span><span class="stat-val" id="statMood">—</span></div>
+    <span class="stat-val" id="statTotal">0</span>
+    <span class="stat-label">รายการ</span>
+    <span class="stat-sep">·</span>
+    <span class="stat-val" id="statStreak">0</span>
+    <span class="stat-label">วันติด</span>
+    <span class="stat-sep">·</span>
+    <span class="stat-val" id="statMood">—</span>
   </div>
 
   <!-- Composer -->
   <div class="composer" id="composer">
-    <div class="composer-focus-ring"></div>
-    <textarea id="text" placeholder="วันนี้เป็นยังไงบ้าง? เล่าให้ฟังหน่อย..." maxlength="10000" aria-label="เขียนบันทึก"></textarea>
-    <div class="composer-bottom">
+    <textarea id="text" placeholder="วันนี้เป็นยังไงบ้าง?…" maxlength="10000" aria-label="เขียนบันทึก" rows="3"></textarea>
+    <div class="composer-bar">
       <div class="moods" id="moods"></div>
-      <label class="image-upload-area" id="imageUploadArea" for="imageInput">
-        <span>📷 คลิกเพื่อเพิ่มรูปภาพ</span>
-      </label>
+      <button class="save-btn" id="saveBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16"><polyline points="20 6 9 17 4 12"/></svg>
+        <span>บันทึก</span>
+      </button>
+    </div>
+    <div class="composer-meta hidden" id="composerMeta">
+      <div class="meta-row">
+        <input type="text" id="tags" placeholder="แท็ก คั่นด้วยจุลภาค" maxlength="500" aria-label="แท็ก">
+        <select id="folderSelect" class="folder-select" aria-label="เลือกโฟลเดอร์">
+          <option value="">ไม่มีโฟลเดอร์</option>
+        </select>
+      </div>
+      <label class="image-upload-label" id="imageUploadArea" for="imageInput">เพิ่มรูปภาพ</label>
       <input type="file" id="imageInput" accept="image/*" multiple hidden>
       <div class="image-preview-row" id="imagePreviewRow"></div>
-      <div class="composer-meta">
-        <div class="composer-meta-row">
-          <div class="meta-input-group">
-            <label class="meta-label">แท็ก</label>
-            <input type="text" id="tags" placeholder="งาน, ออกกำลังกาย" maxlength="500" aria-label="แท็ก">
-          </div>
-          <div class="meta-input-group">
-            <label class="meta-label">โฟลเดอร์</label>
-            <select id="folderSelect" class="folder-select" aria-label="เลือกโฟลเดอร์">
-              <option value="">ไม่มี</option>
-            </select>
-          </div>
-        </div>
-        <button class="save-btn" id="saveBtn">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18"><polyline points="20 6 9 17 4 12"/></svg>
-          <span>บันทึก</span>
-        </button>
-      </div>
     </div>
+    <button type="button" class="meta-toggle" id="metaToggle">รายละเอียด</button>
   </div>
 
   <!-- Filters -->
@@ -210,33 +169,11 @@
 <div class="onboarding-overlay hidden" id="onboardingOverlay">
   <div class="onboarding-card">
     <div class="onboarding-step" id="onbStep1">
-      <div class="onboarding-emoji">📝</div>
-      <h2>ยินดีต้อนรับสู่ Life Log</h2>
-      <p>บันทึกเรื่องราวในชีวิตของคุณทุกวัน</p>
-    </div>
-    <div class="onboarding-step hidden" id="onbStep2">
-      <div class="onboarding-emoji">😊</div>
-      <h2>เลือกอารมณ์</h2>
-      <p>บันทึกอารมณ์ของคุณในแต่ละวัน เพื่อทำความเข้าใจตัวเองมากขึ้น</p>
-    </div>
-    <div class="onboarding-step hidden" id="onbStep3">
-      <div class="onboarding-emoji">📁</div>
-      <h2>จัดระเบียบด้วยโฟลเดอร์</h2>
-      <p>สร้างโฟลเดอร์เพื่อจัดกลุ่มบันทึกของคุณ</p>
-    </div>
-    <div class="onboarding-step hidden" id="onbStep4">
-      <div class="onboarding-emoji">🎯</div>
-      <h2>ตั้งเป้าหมาย</h2>
-      <p>สร้างเป้าหมายรายวันและติดตาม streak ของคุณ</p>
+      <h2>ยินดีต้อนรับ</h2>
+      <p>บันทึกเรื่องราวในชีวิตของคุณ ในแบบของคุณ</p>
     </div>
     <div class="onboarding-nav">
-      <div class="onboarding-dots">
-        <span class="onb-dot on" data-step="1"></span>
-        <span class="onb-dot" data-step="2"></span>
-        <span class="onb-dot" data-step="3"></span>
-        <span class="onb-dot" data-step="4"></span>
-      </div>
-      <button class="onboarding-btn" id="onbNext">ถัดไป →</button>
+      <button class="onboarding-btn" id="onbNext">เริ่มใช้</button>
     </div>
   </div>
 </div>

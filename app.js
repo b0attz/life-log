@@ -21,11 +21,11 @@ var MOOD_STAMPS = {
 var THEME_KEY = 'lifelog.theme';
 var RANGE_KEY = 'lifelog.range';
 var THEMES = [
-  { name: 'light',  label: 'สว่าง',   color: '#f8f7f4', dot: '#5b6b7f' },
-  { name: 'dark',   label: 'มืด',     color: '#121110', dot: '#8aa0b4' },
-  { name: 'sepia',  label: 'ซีเปีย',  color: '#f5f0e6', dot: '#7a6a52' },
-  { name: 'forest', label: 'ป่าไม้',   color: '#f2f5f0', dot: '#4a7a4a' },
-  { name: 'ocean',  label: 'มหาสมุทร', color: '#f0f4f8', dot: '#4a6a88' }
+  { name: 'light',  label: 'สว่าง',   color: '#f5efe2', dot: '#9c3b22' },
+  { name: 'dark',   label: 'มืด',     color: '#16130e', dot: '#d4825c' },
+  { name: 'sepia',  label: 'ซีเปีย',  color: '#ecdfc3', dot: '#7c5228' },
+  { name: 'forest', label: 'ป่าไม้',   color: '#edf0e2', dot: '#3e6b4f' },
+  { name: 'ocean',  label: 'มหาสมุทร', color: '#e8edee', dot: '#2f5d73' }
 ];
 
 /* =========================================================
@@ -195,7 +195,7 @@ document.getElementById('resetForm').addEventListener('submit', function(e) {
       errEl.textContent = 'ส่งลิงก์สำหรับตั้งรหัสผ่านใหม่ไปที่อีเมลของคุณแล้ว';
       errEl.classList.remove('hidden');
       errEl.style.background = 'rgba(74,138,90,.08)';
-      errEl.style.color = 'var(--success)';
+      errEl.style.color = 'var(--accent)';
     }
   });
 });
@@ -268,6 +268,11 @@ document.getElementById('navTheme').addEventListener('click', function() {
   document.getElementById('themePicker').classList.toggle('hidden', !themePickerVisible);
   renderThemePicker();
 });
+document.getElementById('navCalendar').addEventListener('click', function() {
+  closeSidebar();
+  calendarVisible = !calendarVisible;
+  render();
+});
 document.getElementById('navDark').addEventListener('click', function() {
   closeSidebar();
   toggleDark();
@@ -276,8 +281,7 @@ document.getElementById('navDark').addEventListener('click', function() {
 
 function updateDarkToggle() {
   var isDark = document.documentElement.dataset.theme === 'dark';
-  document.getElementById('darkIcon').textContent = isDark ? '☀️' : '🌙';
-  document.getElementById('darkLabel').textContent = isDark ? 'โหมดสว่าง' : 'โหมดมืด';
+  document.getElementById('darkLabel').textContent = isDark ? 'เปิดไฟ' : 'โหมดมืด';
 }
 
 /* =========================================================
@@ -644,7 +648,7 @@ function deleteEntry(id) {
   if (!entry) return;
   showModal({
     title: 'ลบบันทึก',
-    bodyHtml: '<p>ลบบันทึกนี้ใช่ไหม?</p><div style="margin:10px 0;padding:12px;background:var(--accent-soft);font-size:.85rem;border-radius:var(--radius-sm);">' + escapeHtml((entry.text || '').slice(0, 200)) + '</div>',
+    bodyHtml: '<p>ลบบันทึกนี้ใช่ไหม?</p><div style="margin:10px 0;padding:12px;background:var(--accent-soft);font-size:.85rem;">' + escapeHtml((entry.text || '').slice(0, 200)) + '</div>',
     confirmText: 'ลบ',
     showCancel: true,
     onConfirm: function(close) {
@@ -753,7 +757,7 @@ function render() {
   if (filterDay) {
     var dayBar = document.createElement('div');
     dayBar.className = 'filter-bar';
-    dayBar.innerHTML = '📅 ' + formatDateKey(filterDay) + ' <button class="chip" id="clearDayFilter">✕</button>';
+    dayBar.innerHTML = formatDateKey(filterDay) + ' <button class="chip" id="clearDayFilter">✕</button>';
     list.appendChild(dayBar);
   }
 
@@ -761,7 +765,7 @@ function render() {
     var folderObj = getFolderById(activeFolderFilter);
     var folderBar = document.createElement('div');
     folderBar.className = 'filter-bar';
-    folderBar.innerHTML = '<span style="font-size:.85rem;">' + (folderObj ? (folderObj.icon || '📁') + ' ' + escapeHtml(folderObj.name) : 'โฟลเดอร์') + '</span> <span style="flex:1;font-size:.8rem;color:var(--muted);">📂 กรองตามโฟลเดอร์</span> <button class="chip" id="clearFolderFilter">✕</button>';
+    folderBar.innerHTML = '<span>' + (folderObj ? (folderObj.icon || '📁') + ' ' + escapeHtml(folderObj.name) : 'โฟลเดอร์') + '</span> <span style="flex:1;">กรองตามโฟลเดอร์</span> <button class="chip" id="clearFolderFilter">✕</button>';
     list.appendChild(folderBar);
   }
 
@@ -774,9 +778,9 @@ function render() {
 
   if (!items.length) {
     if (!entries.length) {
-      list.innerHTML += '<div class="empty"><div class="empty-rule"></div><div class="empty-text">ยังไม่มีบันทึก</div><div class="empty-sub">เริ่มเขียนเรื่องราวแรกของคุณ</div></div>';
+      list.innerHTML += '<div class="empty"><div class="empty-text">ยังไม่มีบันทึก</div><div class="empty-sub">เริ่มเขียนเรื่องราวแรกของคุณ</div></div>';
     } else {
-      list.innerHTML += '<div class="empty"><div class="empty-rule"></div><div class="empty-text">ไม่พบบันทึก</div><div class="empty-sub">ลองเปลี่ยนเงื่อนไขการค้นหา</div></div>';
+      list.innerHTML += '<div class="empty"><div class="empty-text">ไม่พบบันทึก</div><div class="empty-sub">ลองเปลี่ยนเงื่อนไขการค้นหา</div></div>';
     }
   } else {
     var lastDay = null;
@@ -794,40 +798,33 @@ function render() {
       el.className = 'entry';
       el.dataset.id = e.id;
       if (e.mood) el.dataset.mood = e.mood;
-      var ed = new Date(e.ts);
-      var html = '<div class="entry-date">';
-      html += '<span class="entry-day">' + fmtDayNum.format(e.ts) + '</span>';
-      html += '<span class="entry-dow">' + fmtDow.format(e.ts) + '</span>';
-      html += '<span class="entry-mon">' + fmtMon.format(e.ts) + '</span>';
-      html += '<span class="entry-year">' + fmtYear.format(e.ts) + '</span>';
-      html += '</div><div class="entry-body">';
-      html += '<div class="entry-head">';
+      var html = '<div class="entry-head">';
       if (e.mood) html += '<span class="entry-mood">' + (MOOD_STAMPS[e.mood] || escapeHtml(e.mood)) + '</span>';
       html += '<span class="entry-time">' + fmtTime.format(e.ts) + '</span></div>';
       if (e.text) html += '<div class="entry-text">' + escapeHtml(e.text) + '</div>';
+      html += '<div class="entry-meta">';
       if (e.folder_id) {
         var folder = getFolderById(e.folder_id);
         if (folder) {
-          html += '<div class="entry-folder"><span class="folder-dot" style="background:' + (folder.color || '#8B2A1F') + ';"></span> ' + (folder.icon || '📁') + ' ' + escapeHtml(folder.name) + '</div>';
+          html += '<span class="entry-folder"><span class="folder-dot" style="background:' + (folder.color || '#2A6B5A') + ';"></span>' + escapeHtml(folder.name) + '</span>';
         }
       }
       if ((e.tags || []).length) {
-        html += '<div class="entry-tags">';
+        html += '<span class="entry-tags">';
         for (var t = 0; t < e.tags.length; t++) {
-          html += '<span class="tag" data-tag="' + escapeHtml(e.tags[t]) + '">' + escapeHtml(e.tags[t]) + '</span>';
+          html += '<button class="tag" data-tag="' + escapeHtml(e.tags[t]) + '">' + escapeHtml(e.tags[t]) + '</button>';
         }
-        html += '</div>';
+        html += '</span>';
       }
+      html += '</div>';
       if ((e.images || []).length) {
         html += '<div class="entry-images">';
         for (var img = 0; img < e.images.length; img++) {
-          html += '<img src="' + escapeHtml(e.images[img]) + '" alt="รูปภาพ" loading="lazy" data-lightbox="' + escapeHtml(e.images[img]) + '" data-idx="' + img + '" data-total="' + e.images.length + '">';
+          html += '<img src="' + escapeHtml(e.images[img]) + '" alt="" loading="lazy" data-lightbox="' + escapeHtml(e.images[img]) + '" data-idx="' + img + '" data-total="' + e.images.length + '">';
         }
         html += '</div>';
       }
-      html += '<button class="entry-edit" aria-label="แก้ไข">แก้ไข</button>';
-      html += '<button class="entry-del" aria-label="ลบ">ลบ</button>';
-      html += '</div>';
+      html += '<div class="entry-actions"><button class="edit-btn" aria-label="แก้ไข">แก้ไข</button><button class="del-btn" aria-label="ลบ">ลบ</button></div>';
       el.innerHTML = html;
       list.appendChild(el);
     }
@@ -849,13 +846,11 @@ function renderStats() {
   var counts = {};
   entries.forEach(function(e) { if (e.mood) counts[e.mood] = (counts[e.mood] || 0) + 1; });
   var top = Object.entries(counts).sort(function(a, b) { return b[1] - a[1]; })[0];
-  var moodIcon = top ? (MOOD_STAMPS[top[0]] || top[0]) : '☻';
   var moodText = top ? (MOOD_STAMPS[top[0]] || top[0]) : '—';
 
   document.getElementById('statTotal').textContent = total;
   document.getElementById('statStreak').textContent = streak;
   document.getElementById('statMood').textContent = moodText;
-  document.getElementById('statMoodIcon').textContent = moodIcon;
 }
 
 /* =========================================================
@@ -1027,10 +1022,10 @@ function openExportModal() {
   showModal({
     title: 'ส่งออกข้อมูล',
     bodyHtml:
-      '<div class="export-option" data-format="json"><div class="ex-icon">📄</div><div><div class="ex-label">JSON</div><div class="ex-desc">ข้อมูลดิบ — นำเข้าคืนได้</div></div></div>' +
-      '<div class="export-option" data-format="csv"><div class="ex-icon">📊</div><div><div class="ex-label">CSV</div><div class="ex-desc">ตาราง — เปิดใน Excel / Sheets</div></div></div>' +
-      '<div class="export-option" data-format="html"><div class="ex-icon">🌐</div><div><div class="ex-label">HTML</div><div class="ex-desc">หน้าเว็บแบบสแตนด์อโลน</div></div></div>' +
-      '<div class="export-option" data-format="pdf"><div class="ex-icon">🖨️</div><div><div class="ex-label">PDF / พิมพ์</div><div class="ex-desc">เปิดหน้าพิมพ์ (Ctrl+P)</div></div></div>',
+      '<div class="export-option" data-format="json"><div class="ex-icon">JSON</div><div><div class="ex-desc">ข้อมูลดิบ — นำเข้าคืนได้</div></div></div>' +
+      '<div class="export-option" data-format="csv"><div class="ex-icon">CSV</div><div><div class="ex-desc">ตาราง — เปิดใน Excel / Sheets</div></div></div>' +
+      '<div class="export-option" data-format="html"><div class="ex-icon">HTML</div><div><div class="ex-desc">หน้าเว็บแบบสแตนด์อโลน</div></div></div>' +
+      '<div class="export-option" data-format="pdf"><div class="ex-icon">PRINT</div><div><div class="ex-desc">เปิดหน้าพิมพ์ (Ctrl+P)</div></div></div>',
     onShow: function(close) {
       document.querySelectorAll('.export-option').forEach(function(el) {
         el.addEventListener('click', function() {
@@ -1099,7 +1094,7 @@ function getAllTags() {
 function openTagManager() {
   var tags = getAllTags();
   var html = '';
-  if (!tags.length) html = '<p style="color:var(--muted);font-size:.85rem;">ยังไม่มีแท็ก</p>';
+  if (!tags.length) html = '<p style="color:var(--fg-muted);font-size:.85rem;">ยังไม่มีแท็ก</p>';
   tags.forEach(function(t) {
     html += '<div class="tag-mgr-entry"><div><span class="tag-mgr-tag">#' + escapeHtml(t[0]) + '</span><span class="tag-mgr-count">' + t[1] + ' รายการ</span></div><div class="tag-mgr-actions">';
     html += '<button data-action="rename" data-tag="' + escapeHtml(t[0]) + '">เปลี่ยนชื่อ</button>';
@@ -1212,9 +1207,9 @@ function getEntryCountForFolder(folderId) {
 }
 
 function openFolderManager() {
-  var html = '<button class="modal-btn modal-confirm" id="addFolderBtn" style="width:100%;margin-bottom:16px;justify-content:center;">➕ เพิ่มโฟลเดอร์</button><div id="folderList">';
+  var html = '<button class="modal-btn modal-confirm" id="addFolderBtn" style="width:100%;margin-bottom:16px;justify-content:center;">+ เพิ่มโฟลเดอร์</button><div id="folderList">';
   if (!folders.length) {
-    html += '<p style="text-align:center;color:var(--muted);padding:20px;font-size:.85rem;">ยังไม่มีโฟลเดอร์ — กดเพิ่มเลย!</p>';
+    html += '<p style="text-align:center;color:var(--fg-muted);padding:20px;font-size:.85rem;">ยังไม่มีโฟลเดอร์ — กดเพิ่มเลย!</p>';
   } else {
     folders.forEach(function(f) {
       var count = getEntryCountForFolder(f.id);
@@ -1240,8 +1235,8 @@ function openFolderManager() {
         showModal({
           title: 'สร้างโฟลเดอร์ใหม่',
           bodyHtml: '<input type="text" id="newFolderName" placeholder="ชื่อโฟลเดอร์" maxlength="50" style="margin-bottom:16px;">' +
-            '<label style="display:block;margin-bottom:8px;font-size:.8rem;color:var(--muted);font-weight:600;">เลือกสี:</label><div class="folder-color-grid" id="folderColorGrid"></div>' +
-            '<label style="display:block;margin:12px 0 8px;font-size:.8rem;color:var(--muted);font-weight:600;">เลือกไอคอน:</label><div class="folder-icon-grid" id="folderIconGrid"></div>',
+            '<label style="display:block;margin-bottom:8px;font-size:.8rem;color:var(--fg-muted);font-weight:600;">เลือกสี:</label><div class="folder-color-grid" id="folderColorGrid"></div>' +
+            '<label style="display:block;margin:12px 0 8px;font-size:.8rem;color:var(--fg-muted);font-weight:600;">เลือกไอคอน:</label><div class="folder-icon-grid" id="folderIconGrid"></div>',
           confirmText: 'สร้าง', showCancel: true,
           onConfirm: function(close2) {
             var name = document.getElementById('newFolderName').value.trim();
@@ -1361,7 +1356,7 @@ function deleteFolderPrompt(id) {
   var folder = getFolderById(id);
   if (!folder) return;
   var count = getEntryCountForFolder(id);
-  var extra = count > 0 ? '<p style="margin-top:8px;font-size:.85rem;color:var(--danger);">⚠️ ' + count + ' รายการในโฟลเดอร์นี้จะถูกย้ายไป "ไม่มีโฟลเดอร์"</p>' : '';
+  var extra = count > 0 ? '<p style="margin-top:8px;font-size:.85rem;color:#c33;">' + count + ' รายการในโฟลเดอร์นี้จะถูกย้ายไป "ไม่มีโฟลเดอร์"</p>' : '';
   showModal({
     title: 'ลบโฟลเดอร์',
     bodyHtml: '<p>ลบโฟลเดอร์ <strong>' + escapeHtml(folder.name) + '</strong> ใช่ไหม?</p>' + extra,
@@ -1411,18 +1406,18 @@ function renderGoalsModal() {
       html += '<div class="goal-item">';
       html += '<button class="goal-check' + (done ? ' done' : '') + '" data-goal-id="' + g.id + '" data-date="' + todayStr + '"></button>';
       html += '<div class="goal-info"><div class="goal-title' + (done ? ' done-text' : '') + '">' + escapeHtml(g.title) + '</div>';
-      html += '<div class="goal-meta"><span class="goal-streak">🔥 ' + streak + ' วัน</span><span>' + (g.type === 'daily' ? 'รายวัน' : g.type === 'weekly' ? 'รายสัปดาห์' : 'ปกติ') + '</span></div></div>';
+      html += '<div class="goal-meta"><span class="goal-streak">' + streak + ' วัน</span><span>' + (g.type === 'daily' ? 'รายวัน' : g.type === 'weekly' ? 'รายสัปดาห์' : 'ปกติ') + '</span></div></div>';
       html += '<div class="goal-actions">';
-      html += '<button data-action="editGoal" data-id="' + g.id + '">✏️</button>';
-      html += '<button data-action="deleteGoal" data-id="' + g.id + '">🗑️</button>';
+      html += '<button data-action="editGoal" data-id="' + g.id + '">แก้ไข</button>';
+      html += '<button data-action="deleteGoal" data-id="' + g.id + '">ลบ</button>';
       html += '</div></div>';
     });
     html += '</div>';
   } else {
-    html += '<div class="goal-empty"><div class="big">🎯</div>ยังไม่มีเป้าหมาย — ตั้งเป้าหมายแรกของคุณ!</div>';
+    html += '<div class="goal-empty"><div class="empty-text" style="font-size:1rem;">ยังไม่มีเป้าหมาย</div></div>';
   }
 
-  html += '<button class="modal-btn modal-confirm" id="addGoalBtn" style="width:100%;margin-top:16px;justify-content:center;">➕ เพิ่มเป้าหมาย</button>';
+  html += '<button class="modal-btn modal-confirm" id="addGoalBtn" style="width:100%;margin-top:16px;justify-content:center;">+ เพิ่มเป้าหมาย</button>';
 
   showModal({
     title: 'เป้าหมายของฉัน', bodyHtml: html,
@@ -1607,14 +1602,14 @@ function openDashboard() {
   var html = '';
 
   html += '<div class="dash-stats-grid">';
-  html += '<div class="dash-stat-card"><div class="dash-stat-icon">📝</div><div class="dash-stat-val">' + total + '</div><div class="dash-stat-label">รายการทั้งหมด</div></div>';
-  html += '<div class="dash-stat-card"><div class="dash-stat-icon">🔥</div><div class="dash-stat-val">' + streak + '</div><div class="dash-stat-label">วันติดต่อกัน</div></div>';
-  html += '<div class="dash-stat-card"><div class="dash-stat-icon">📊</div><div class="dash-stat-val">' + entriesThisMonth + '</div><div class="dash-stat-label">เดือนนี้</div></div>';
-  html += '<div class="dash-stat-card"><div class="dash-stat-icon">✍️</div><div class="dash-stat-val">' + totalWords + '</div><div class="dash-stat-label">คำทั้งหมด</div></div>';
+  html += '<div class="dash-stat-card"><div class="dash-stat-val">' + total + '</div><div class="dash-stat-label">รายการทั้งหมด</div></div>';
+  html += '<div class="dash-stat-card"><div class="dash-stat-val">' + streak + '</div><div class="dash-stat-label">วันติดต่อกัน</div></div>';
+  html += '<div class="dash-stat-card"><div class="dash-stat-val">' + entriesThisMonth + '</div><div class="dash-stat-label">เดือนนี้</div></div>';
+  html += '<div class="dash-stat-card"><div class="dash-stat-val">' + totalWords + '</div><div class="dash-stat-label">คำทั้งหมด</div></div>';
   html += '</div>';
 
   /* Mood chart */
-  html += '<div class="dash-section"><div class="dash-section-title">😊 อารมณ์</div>';
+  html += '<div class="dash-section"><div class="dash-section-title">อารมณ์</div>';
   var moodCounts = {};
   entries.forEach(function(e) { if (e.mood) moodCounts[e.mood] = (moodCounts[e.mood] || 0) + 1; });
   var moodEntries = Object.entries(moodCounts).sort(function(a, b) { return b[1] - a[1]; });
@@ -1627,12 +1622,12 @@ function openDashboard() {
     });
     html += '</div>';
   } else {
-    html += '<p style="color:var(--muted);font-size:.85rem;">ยังไม่มีข้อมูลอารมณ์</p>';
+    html += '<p style="color:var(--fg-muted);font-size:.85rem;">ยังไม่มีข้อมูลอารมณ์</p>';
   }
   html += '</div>';
 
   /* Mood trend — last 14 days */
-  html += '<div class="dash-section"><div class="dash-section-title">📈 อารมณ์ 14 วันล่าสุด</div>';
+  html += '<div class="dash-section"><div class="dash-section-title">อารมณ์ 14 วันล่าสุด</div>';
   var fmtShort = new Intl.DateTimeFormat('th-TH', { day: 'numeric', month: 'short' });
   var moodByDay = {};
   entries.forEach(function(e) {
@@ -1662,12 +1657,12 @@ function openDashboard() {
     });
     html += '</div>';
   } else {
-    html += '<p style="color:var(--muted);font-size:.85rem;">ยังไม่มีข้อมูลอารมณ์</p>';
+    html += '<p style="color:var(--fg-muted);font-size:.85rem;">ยังไม่มีข้อมูลอารมณ์</p>';
   }
   html += '</div>';
 
   /* Tag chart */
-  html += '<div class="dash-section"><div class="dash-section-title">🏷️ แท็กยอดนิยม</div>';
+  html += '<div class="dash-section"><div class="dash-section-title">แท็กยอดนิยม</div>';
   var tagCounts = {};
   entries.forEach(function(e) { (e.tags || []).forEach(function(t) { if (t) tagCounts[t] = (tagCounts[t] || 0) + 1; }); });
   var tagEntries = Object.entries(tagCounts).sort(function(a, b) { return b[1] - a[1]; }).slice(0, 10);
@@ -1680,12 +1675,12 @@ function openDashboard() {
     });
     html += '</div>';
   } else {
-    html += '<p style="color:var(--muted);font-size:.85rem;">ยังไม่มีแท็ก</p>';
+    html += '<p style="color:var(--fg-muted);font-size:.85rem;">ยังไม่มีแท็ก</p>';
   }
   html += '</div>';
 
   /* Activity heatmap */
-  html += '<div class="dash-section"><div class="dash-section-title">📅 กิจกรรม 90 วันล่าสุด</div>';
+  html += '<div class="dash-section"><div class="dash-section-title">กิจกรรม 90 วันล่าสุด</div>';
   html += '<div class="heatmap-wrap">';
   var dayCounts = {};
   entries.forEach(function(e) { var k = dayKey(e.ts); dayCounts[k] = (dayCounts[k] || 0) + 1; });
@@ -1716,7 +1711,7 @@ function openDashboard() {
   html += '</div></div>';
 
   showModal({
-    title: '📊 สถิติของคุณ', bodyHtml: html
+    title: 'สถิติของคุณ', bodyHtml: html
   });
 }
 
@@ -1749,30 +1744,13 @@ function closeFocusMode() {
 /* =========================================================
    Onboarding
    ========================================================= */
-var onbCurrentStep = 1;
-var onbTotalSteps = 4;
-
 function showOnboarding() {
   document.getElementById('onboardingOverlay').classList.remove('hidden');
-  onbCurrentStep = 1;
-  updateOnbStep();
 }
 
 function completeOnboarding() {
   localStorage.setItem('lifelog.onboarded', '1');
   document.getElementById('onboardingOverlay').classList.add('hidden');
-}
-
-function updateOnbStep() {
-  for (var i = 1; i <= onbTotalSteps; i++) {
-    var step = document.getElementById('onbStep' + i);
-    if (step) step.classList.toggle('hidden', i !== onbCurrentStep);
-  }
-  document.querySelectorAll('.onb-dot').forEach(function(d) {
-    d.classList.toggle('on', parseInt(d.dataset.step) === onbCurrentStep);
-  });
-  var btn = document.getElementById('onbNext');
-  btn.textContent = onbCurrentStep === onbTotalSteps ? 'เริ่มเลย! →' : 'ถัดไป →';
 }
 
 /* =========================================================
@@ -1812,28 +1790,16 @@ function lightboxNext() { lightboxIdx = (lightboxIdx + 1) % lightboxImages.lengt
 /* =========================================================
    Event Listeners (DOM ready — scripts at end of body)
    ========================================================= */
-document.getElementById('onbNext').addEventListener('click', function() {
-  if (onbCurrentStep >= onbTotalSteps) { completeOnboarding(); return; }
-  onbCurrentStep++;
-  updateOnbStep();
-});
-document.querySelectorAll('.onb-dot').forEach(function(d) {
-  d.addEventListener('click', function() {
-    onbCurrentStep = parseInt(d.dataset.step);
-    updateOnbStep();
-  });
-});
+document.getElementById('onbNext').addEventListener('click', completeOnboarding);
 
 document.getElementById('saveBtn').addEventListener('click', saveEntry);
-document.getElementById('themeToggleBtn').addEventListener('click', function() {
-  themePickerVisible = !themePickerVisible;
-  document.getElementById('themePicker').classList.toggle('hidden', !themePickerVisible);
-  renderThemePicker();
-});
 
-document.getElementById('calendarBtn').addEventListener('click', function() {
-  calendarVisible = !calendarVisible;
-  render();
+/* Meta toggle */
+document.getElementById('metaToggle').addEventListener('click', function() {
+  var meta = document.getElementById('composerMeta');
+  var isHidden = meta.classList.contains('hidden');
+  meta.classList.toggle('hidden');
+  this.textContent = isHidden ? 'ซ่อน' : 'รายละเอียด';
 });
 
 document.getElementById('calPrev').addEventListener('click', function() {
@@ -1900,13 +1866,13 @@ document.addEventListener('keydown', function(e) {
 
 /* Click delegation for entries */
 document.getElementById('list').addEventListener('click', function(e) {
-  var delBtn = e.target.closest('.entry-del');
+  var delBtn = e.target.closest('.del-btn');
   if (delBtn) {
     var entry = delBtn.closest('.entry');
     if (entry) deleteEntry(entry.dataset.id);
     return;
   }
-  var editBtn = e.target.closest('.entry-edit');
+  var editBtn = e.target.closest('.edit-btn');
   if (editBtn) {
     var entry = editBtn.closest('.entry');
     if (entry) openEditModal(entry.dataset.id);
